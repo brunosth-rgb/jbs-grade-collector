@@ -97,6 +97,85 @@ function timestampArquivo() {
     .replace(/\.\d{3}Z$/, 'Z');
 }
 
+function obterSemanaBrasil() {
+  const agora = new Date();
+
+  const partes = new Intl.DateTimeFormat(
+    'en-CA',
+    {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }
+  ).formatToParts(agora);
+
+  const valores = {};
+
+  for (const parte of partes) {
+    if (parte.type !== 'literal') {
+      valores[parte.type] = parte.value;
+    }
+  }
+
+  const ano = Number(valores.year);
+  const mes = Number(valores.month);
+  const dia = Number(valores.day);
+
+  const hoje = new Date(
+    Date.UTC(
+      ano,
+      mes - 1,
+      dia
+    )
+  );
+
+  const diaSemana = hoje.getUTCDay();
+
+  const deslocamentoSegunda =
+    diaSemana === 0
+      ? -6
+      : 1 - diaSemana;
+
+  const segunda = new Date(hoje);
+
+  segunda.setUTCDate(
+    hoje.getUTCDate() +
+    deslocamentoSegunda
+  );
+
+  const nomes = [
+    'Seg',
+    'Ter',
+    'Qua',
+    'Qui',
+    'Sex',
+    'Sáb',
+    'Dom'
+  ];
+
+  const dias = {};
+
+  for (let i = 0; i < 7; i++) {
+    const data = new Date(segunda);
+
+    data.setUTCDate(
+      segunda.getUTCDate() + i
+    );
+
+    dias[nomes[i]] =
+      data
+        .toISOString()
+        .slice(0, 10);
+  }
+
+  return {
+    inicio: dias.Seg,
+    fim: dias.Dom,
+    dias
+  };
+}
+
 function dataHoraBrasil() {
   const agora = new Date();
 
@@ -1025,6 +1104,9 @@ async function main() {
 
       status:
         'OK',
+
+      semana:
+        obterSemanaBrasil(),
 
       grade
     };
