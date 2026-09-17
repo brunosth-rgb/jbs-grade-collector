@@ -718,6 +718,16 @@ async function extrairGrade(page) {
                 ' '
               ) || '';
 
+          const utilizadasMatch =
+            textoCategoria.match(
+              /\((\d+)\)/
+            );
+
+          const utilizadas =
+            utilizadasMatch
+              ? Number(utilizadasMatch[1]) || 0
+              : 0;
+
           const categoria =
             limparCategoria(
               textoCategoria
@@ -791,16 +801,26 @@ async function extrairGrade(page) {
                 ) || 0
               : null;
 
+          const disponibilizadas =
+            Number(
+              input.value
+            ) || 0;
+
+          const disponiveis =
+            Math.max(
+              0,
+              disponibilizadas - utilizadas
+            );
+
           registros.push({
             inicio,
             fim,
             dia,
             categoria,
 
-            quantidade:
-              Number(
-                input.value
-              ) || 0,
+            disponibilizadas,
+            utilizadas,
+            disponiveis,
 
             totalDia,
             totalPeriodo
@@ -907,8 +927,16 @@ function estruturarGrade(
       ]
       .categorias[
         registro.categoria
-      ] =
-        registro.quantidade;
+      ] = {
+        disponibilizadas:
+          registro.disponibilizadas,
+
+        utilizadas:
+          registro.utilizadas,
+
+        disponiveis:
+          registro.disponiveis
+      };
   }
 
   return {
