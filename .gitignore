@@ -1,0 +1,6 @@
+.env
+.auth/
+credentials/
+output/
+node_modules/
+.DS_Store
