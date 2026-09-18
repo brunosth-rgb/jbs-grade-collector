@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle de Grade</title>
+<style>
+*{box-sizing:border-box}
+:root{
+  --navy:#14143c;
+  --blue:#232378;
+  --green:#91d700;
+  --bg:#f4f6f8;
+  --card:#ffffff;
+  --border:#e5e7eb;
+  --muted:#6b7280;
+  --text:#1f2937;
+  --ok:#15803d;
+  --warn:#b45309;
+  --danger:#b91c1c;
+  --danger-bg:#fff1f2;
+  --soft:#f8fafc;
+  --soft-blue:#f4f5ff;
+}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+.hidden{display:none!important}
+button{font:inherit}
+
+.login-box{
+  width:380px;max-width:calc(100% - 32px);margin:100px auto;padding:28px;background:#fff;
+  border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.08)
+}
+.login-box h2{margin:0 0 8px;color:var(--navy)}
+.login-subtitle{margin:0 0 22px;color:var(--muted);font-size:13px}
+input,select{
+  width:100%;padding:11px 12px;border:1px solid #d1d5db;border-radius:7px;font-size:14px;background:#fff
+}
+.login-box input{margin-bottom:12px}
+button{border:0;border-radius:7px;padding:10px 16px;cursor:pointer;font-weight:700}
+.btn-primary{background:var(--blue);color:#fff}
+.login-box .btn-primary{width:100%}
+.btn-secondary{background:#fff;color:var(--navy)}
+.error{margin-top:10px;color:var(--danger);font-size:13px}
+
+header{
+  background:var(--navy);color:#fff;padding:14px 22px;display:flex;align-items:center;
+  justify-content:space-between;gap:16px;position:sticky;top:0;z-index:30
+}
+header h1{margin:0;font-size:20px}
+button:disabled{opacity:.65;cursor:wait}
+.header-left,.header-right{display:flex;align-items:center;gap:14px}
+.online-indicator{display:flex;align-items:center;gap:7px;font-size:12px;opacity:.95}
+.online-dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
+
+main{max-width:1580px;margin:0 auto;padding:18px 20px 26px}
+
+.top-nav{display:flex;gap:8px;margin-bottom:16px}
+.nav-tab{
+  background:#fff;color:#374151;border:1px solid #dfe3e8;padding:9px 16px
+}
+.nav-tab.active{background:var(--blue);border-color:var(--blue);color:#fff}
+
+.cards{
+  display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-bottom:16px
+}
+.card{
+  background:#fff;border-radius:10px;padding:13px 15px;box-shadow:0 2px 8px rgba(0,0,0,.05)
+}
+.card-label{font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:5px}
+.card-value{color:var(--navy);font-size:18px;font-weight:800}
+.status-ok{color:var(--ok)}
+
+.section-card{
+  background:#fff;border-radius:10px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.05);margin-bottom:16px
+}
+.section-label{font-size:11px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.section-title{font-size:20px;font-weight:800;color:var(--navy)}
+.section-subtitle{font-size:12px;color:var(--muted);margin-top:4px}
+
+.day-selector{
+  display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin-top:12px
+}
+.day-button{
+  background:#fff;color:#374151;border:1px solid #dfe3e8;padding:10px 8px;border-radius:7px;transition:.15s ease
+}
+.day-button:hover{border-color:var(--blue)}
+.day-button.active{background:var(--blue);border-color:var(--blue);color:#fff}
+.day-button.today:not(.active){box-shadow:inset 0 0 0 2px var(--green)}
+.day-button-name{display:block;font-size:13px;font-weight:800}
+.day-button-date{display:block;margin-top:3px;font-size:11px;opacity:.8}
+
+.legend{
+  display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;font-size:11px;color:var(--muted)
+}
+.legend-item{display:flex;align-items:center;gap:5px}
+.legend-dot{width:9px;height:9px;border-radius:50%}
+.legend-dot.free{background:#bbf7d0}
+.legend-dot.full{background:#fecdd3}
+
+.table-wrap{
+  overflow-x:auto;
+  overflow-y:clip;
+  background:#fff;
+  border-radius:10px;
+  box-shadow:0 2px 8px rgba(0,0,0,.05)
+}
+table{width:100%;border-collapse:separate;border-spacing:0;min-width:1400px}
+th{
+  background:var(--blue);
+  color:#fff;
+  position:relative;
+  z-index:2;
+  padding:10px 8px;
+  font-size:11px;
+  text-align:center;
+  white-space:nowrap
+}
+td{
+  padding:7px 6px;border-bottom:1px solid var(--border);text-align:center;font-size:12px;background:#fff
+}
+tr:hover td{background:#f8fafc}
+th:first-child,td:first-child{
+  position:sticky;
+  left:0;
+  text-align:left;
+  font-weight:800;
+  white-space:nowrap
+}
+th:first-child{
+  background:var(--blue);
+  z-index:5
+}
+td:first-child{
+  z-index:4
+}
+td:first-child{background:#fff}
+tr:hover td:first-child{background:#f8fafc}
+
+.total-cell{
+  background:var(--soft-blue)!important;
+  color:var(--navy);
+  font-weight:800
+}
+
+.slot-cell{
+  min-width:86px;
+}
+.slot-main{
+  font-size:12px;
+  font-weight:800;
+  color:var(--navy);
+  line-height:1.2
+}
+.slot-sub{
+  margin-top:2px;
+  font-size:10px;
+  color:var(--muted);
+  line-height:1.2
+}
+.slot-cell.slot-free{
+  background:#ecfdf5
+}
+.slot-cell.slot-free .slot-main{
+  color:#166534
+}
+.slot-cell.slot-free .slot-sub{
+  color:#15803d
+}
+.slot-cell.slot-full{
+  background:var(--danger-bg)
+}
+.slot-cell.slot-full .slot-main,
+.slot-cell.slot-full .slot-sub{
+  color:var(--danger)
+}
+
+.empty-state{padding:32px;text-align:center;color:var(--muted)}
+
+.history-controls{
+  display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:12px;align-items:end
+}
+.field label{
+  display:block;font-size:11px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;font-weight:700
+}
+.history-summary{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:14px
+}
+.summary-box{
+  background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:12px
+}
+.summary-value{font-size:18px;font-weight:800;color:var(--navy);margin-top:4px}
+.delta-positive{color:#b45309}
+.delta-negative{color:#15803d}
+.delta-neutral{color:#6b7280}
+.history-table td.delta-up{color:#b45309;font-weight:800}
+.history-table td.delta-down{color:#15803d;font-weight:800}
+.history-table td.delta-zero{color:#6b7280}
+
+
+.floating-table-header{
+  position:fixed;
+  z-index:25;
+  overflow:hidden;
+  display:none;
+  pointer-events:none;
+  background:transparent;
+}
+.floating-table-header.visible{
+  display:block;
+}
+
+.floating-table-header table{
+  border-collapse:separate;
+  border-spacing:0;
+  margin:0;
+  min-width:0;
+  table-layout:fixed;
+}
+.floating-table-header th{
+  position:relative!important;
+  left:auto!important;
+  top:auto!important;
+  z-index:1!important;
+  box-shadow:none;
+}
+
+@media(max-width:1200px){
+  .cards{grid-template-columns:repeat(3,1fr)}
+}
+@media(max-width:950px){
+  .cards,.history-summary{grid-template-columns:repeat(2,1fr)}
+  .day-selector{grid-template-columns:repeat(4,1fr)}
+  .history-controls{grid-template-columns:1fr}
+}
+@media(max-width:600px){
+  main{padding:14px}
+  .cards,.history-summary{grid-template-columns:1fr}
+  .day-selector{grid-template-columns:repeat(2,1fr)}
+  header{padding:12px 14px;flex-wrap:wrap}
+  .header-right{flex-wrap:wrap;gap:8px}
+  .online-indicator{display:none}
+}
+.available-recap{border:1px solid #bbf7d0}
+.recap-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:14px}
+.recap-item{padding:12px;background:#f0fdf4;border-radius:7px}
+.recap-item.zero{background:#f4f6f8}
+.recap-item .card-value{color:#166534;font-size:22px}
+.recap-item .card-label{font-size:11px;text-transform:none}
+</style>
+</head>
+
+<body>
+<div id="loginView" class="login-box">
+  <h2>Controle de Grade</h2>
+  <p class="login-subtitle">Acesso restrito aos usuários autorizados.</p>
+  <input id="email" type="email" placeholder="E-mail" autocomplete="username">
+  <input id="password" type="password" placeholder="Senha" autocomplete="current-password">
+  <button id="loginButton" class="btn-primary">Entrar</button>
+  <div id="loginError" class="error"></div>
+</div>
+
+<div id="appView" class="hidden">
+  <header>
+    <div class="header-left">
+      <h1>Controle de Grade</h1>
+    </div>
+    <div class="header-right">
+      <div class="online-indicator"><span class="online-dot"></span><span>Online</span></div>
+      <button id="updateNowButton" class="btn-secondary">Atualizar Agora</button>
+      <button id="logoutButton" class="btn-secondary">Sair</button>
+    </div>
+  </header>
+
+  <div id="floatingTableHeader" class="floating-table-header" aria-hidden="true"></div>
+
+  <main>
+    <div id="updateNowStatus" role="status" aria-live="polite" style="margin-bottom:12px"></div>
+    <div style="margin-bottom:12px">
+      <button id="configureTrigger" class="btn-secondary">Configurar atualização</button>
+      <form id="triggerSettings" class="section-card hidden" style="margin-top:10px">
+        <label for="triggerEndpoint">Endereço do seu serviço de atualização</label>
+        <p class="section-subtitle">Use somente o serviço publicado na sua conta Cloudflare. O endereço fica salvo neste navegador.</p>
+        <input id="triggerEndpoint" type="url" placeholder="https://controle-grade-gatilho.sua-conta.workers.dev" required style="margin-top:10px">
+        <button type="submit" class="btn-primary">Salvar endereço</button>
+        <div id="triggerSettingsError" role="alert" class="error"></div>
+      </form>
+    </div>
+    <div class="top-nav">
+      <button id="tabAtual" class="nav-tab active">Visão Atual</button>
+      <button id="tabHistorico" class="nav-tab">Histórico</button>
+    </div>
+
+    <section id="viewAtual">
+      <div class="section-card available-recap">
+        <div class="section-label">Disponibilidade para agendamento</div>
+        <div id="recapDate" class="section-title">-</div>
+        <div id="recapRule" class="section-subtitle">Somente o dia selecionado. Faixas que já começaram não entram no resumo.</div>
+        <div id="availableRecap" class="recap-grid" aria-live="polite"></div>
+      </div>
+      <div class="cards">
+        <div class="card">
+          <div class="card-label">Status</div>
+          <div id="status" class="card-value status-ok">-</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Última atualização</div>
+          <div id="updatedAt" class="card-value">-</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Períodos</div>
+          <div id="periodCount" class="card-value">-</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Janelas disponibilizadas</div>
+          <div id="dayOffered" class="card-value">-</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Janelas utilizadas</div>
+          <div id="dayUsed" class="card-value">-</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Janelas disponíveis</div>
+          <div id="dayAvailable" class="card-value">-</div>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <div class="section-label">Grade selecionada</div>
+        <div id="selectedDateTitle" class="section-title">-</div>
+        <div id="weekRange" class="section-subtitle">-</div>
+        <div id="daySelector" class="day-selector"></div>
+
+        <div class="legend">
+          <div class="legend-item"><span class="legend-dot free"></span><span>Verde: ainda há grades disponíveis</span></div>
+          <div class="legend-item"><span class="legend-dot full"></span><span>Vermelho: todas as grades foram utilizadas</span></div>
+          <div class="legend-item"><strong>Formato:</strong>&nbsp;utilizadas / disponibilizadas</div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr id="tableHeader"></tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+        <div id="emptyState" class="empty-state hidden">Nenhum dado disponível para o dia selecionado.</div>
+      </div>
+    </section>
+
+    <section id="viewHistorico" class="hidden">
+      <div class="section-card">
+        <div class="section-label">Histórico da Grade</div>
+        <div class="section-title">Consolidado por dia</div>
+        <div class="section-subtitle">Última coleta disponível para cada data da grade. As coletas não são somadas. Datas futuras representam a disponibilidade prevista; datas passadas refletem a última coleta registrada.</div>
+        <button id="refreshHistory" class="btn-primary" style="margin-top:12px">Atualizar histórico</button>
+        <div id="dailyHistoryStatus" role="status" class="section-subtitle"></div>
+      </div>
+      <div class="table-wrap" style="margin-bottom:24px">
+        <table class="history-table" style="min-width:900px">
+          <thead><tr><th>Data da grade</th><th>Disponibilizadas</th><th>Utilizadas</th><th>Disponíveis</th><th>Ocupação</th><th>Última coleta (Brasília)</th></tr></thead>
+          <tbody id="dailyHistoryBody"></tbody>
+        </table>
+        <div id="dailyHistoryEmpty" class="empty-state">Carregando histórico...</div>
+      </div>
+      <div class="section-card">
+        <div class="section-label">Histórico da Grade</div>
+        <div class="section-title">Comparação entre coletas</div>
+        <div class="section-subtitle">A comparação considera as janelas utilizadas por faixa horária.</div>
+
+        <div class="history-controls" style="margin-top:16px">
+          <div class="field">
+            <label for="historyDate">Data da grade</label>
+            <select id="historyDate"></select>
+          </div>
+          <div class="field">
+            <label for="historyBase">Coleta base</label>
+            <select id="historyBase"></select>
+          </div>
+          <div class="field">
+            <label for="historyCompare">Comparar com</label>
+            <select id="historyCompare"></select>
+          </div>
+        </div>
+
+        <div class="history-summary">
+          <div class="summary-box">
+            <div class="card-label">Utilizadas na base</div>
+            <div id="historyTotalBase" class="summary-value">-</div>
+          </div>
+          <div class="summary-box">
+            <div class="card-label">Utilizadas na comparação</div>
+            <div id="historyTotalCompare" class="summary-value">-</div>
+          </div>
+          <div class="summary-box">
+            <div class="card-label">Variação</div>
+            <div id="historyDelta" class="summary-value">-</div>
+          </div>
+          <div class="summary-box">
+            <div class="card-label">Intervalo</div>
+            <div id="historyInterval" class="summary-value">-</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>Horário</th>
+              <th>Utilizadas base</th>
+              <th>Utilizadas comparação</th>
+              <th>Variação</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+        <div id="historyEmpty" class="empty-state hidden">Não há coletas suficientes para comparar esta data.</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+import { getDatabase, ref, onValue, get } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDhT2vV3ThNIkCIhUR6D_-7hTnbGejFgqo",
+  authDomain: "jbs-controlegrade.firebaseapp.com",
+  databaseURL: "https://jbs-controlegrade-default-rtdb.firebaseio.com",
+  projectId: "jbs-controlegrade",
+  storageBucket: "jbs-controlegrade.firebasestorage.app",
+  messagingSenderId: "261111959651",
+  appId: "1:261111959651:web:f8f8f366ff6b9bd5c46856"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
+// Após a publicação, este endereço pode ser preenchido para todos os usuários.
+const DEFAULT_TRIGGER_URL = "https://controle-grade-gatilho.bruno-sth.workers.dev/atualizar";
+const endpointKey = "controleGradeTriggerCloudflareV1";
+function endpointSalvo() {
+  try { return DEFAULT_TRIGGER_URL || localStorage.getItem(endpointKey) || ""; }
+  catch { return DEFAULT_TRIGGER_URL; }
+}
+function normalizarEndpoint(value) {
+  const url = new URL(value);
+  if (url.protocol !== "https:" || !url.hostname.endsWith(".workers.dev") || url.username || url.password || url.port) throw new Error("Use o endereço HTTPS do serviço publicado em workers.dev.");
+  url.pathname = "/atualizar"; url.search = ""; url.hash = "";
+  return url.href;
+}
+async function triggerGrade() {
+  let endpoint;
+  try { endpoint = normalizarEndpoint(endpointSalvo()); }
+  catch { document.getElementById("triggerSettings").classList.remove("hidden"); throw Object.assign(new Error("Configure o endereço do serviço de atualização."), {code:"not-configured"}); }
+  const baseline = dadosGradeAtual?.coletadoEm || null;
+  const idToken = await auth.currentUser.getIdToken();
+  const response = await fetch(endpoint, {method:"POST",headers:{Authorization:"Bearer " + idToken,"Content-Type":"application/json"},body:JSON.stringify({baseline}),signal:AbortSignal.timeout(60000),redirect:"error"});
+  const data = await response.json();
+  if (!response.ok) throw Object.assign(new Error(data.message || "Não foi possível solicitar a atualização."), {code:data.error});
+  if (!["accepted","running"].includes(data.status)) throw new Error("Resposta inesperada do serviço de atualização.");
+  return {data};
+}
+document.getElementById("configureTrigger").addEventListener("click", () => {
+  document.getElementById("triggerEndpoint").value = endpointSalvo();
+  document.getElementById("triggerSettings").classList.toggle("hidden");
+});
+document.getElementById("triggerSettings").addEventListener("submit", event => {
+  event.preventDefault();
+  try {
+    const endpoint = normalizarEndpoint(document.getElementById("triggerEndpoint").value.trim());
+    localStorage.setItem(endpointKey, endpoint);
+    document.getElementById("triggerSettings").classList.add("hidden");
+    document.getElementById("updateNowStatus").textContent = "Endereço salvo. Você já pode solicitar a atualização.";
+  } catch(error) {document.getElementById("triggerSettingsError").textContent = error.message;}
+});
+const updateNowButton = document.getElementById("updateNowButton");
+const updateNowStatus = document.getElementById("updateNowStatus");
+let pendingGrade = null;
+let updateTimer = null;
+let updateGeneration = 0;
+function encerrarEsperaAtualizacao(message) {
+  pendingGrade = null;
+  clearTimeout(updateTimer);
+  updateNowButton.disabled = false;
+  updateNowButton.textContent = "Atualizar Agora";
+  updateNowStatus.textContent = message;
+}
+updateNowButton.addEventListener("click", async () => {
+  if (!auth.currentUser) return;
+  const generation = ++updateGeneration;
+  updateNowButton.disabled = true;
+  updateNowButton.textContent = "Solicitando...";
+  updateNowStatus.textContent = "Solicitando atualização da grade...";
+  try {
+    const response = await triggerGrade();
+    if (generation !== updateGeneration) return;
+    pendingGrade = {baseline:response.data.baseline};
+    updateNowButton.textContent = "Aguardando coleta...";
+    updateNowStatus.textContent = response.data.status === "running"
+      ? "Já existe uma execução em andamento. Aguardando uma nova coleta."
+      : "Solicitação aceita pelo GitHub Actions. Aguardando uma nova coleta.";
+    const chegouNovaColeta = () => dadosGradeAtual?.coletadoEm &&
+      (!pendingGrade.baseline || Date.parse(dadosGradeAtual.coletadoEm) > Date.parse(pendingGrade.baseline));
+    if (chegouNovaColeta()) encerrarEsperaAtualizacao("Nova coleta recebida. Grade atualizada.");
+    else updateTimer = setTimeout(() => encerrarEsperaAtualizacao("Nenhuma nova coleta foi recebida em 15 minutos. Verifique a execução no GitHub Actions; ela pode ter falhado ou ainda estar na fila."), 15 * 60 * 1000);
+  } catch(error) {
+    if (generation !== updateGeneration) return;
+    const messages = {
+      "github-error":error.message,
+      "unavailable":error.message,
+      "permission-denied":"Seu usuário não possui permissão para acionar a atualização.",
+      "resource-exhausted":"Uma atualização foi solicitada recentemente. Aguarde dois minutos.",
+      "unauthenticated":"Faça login novamente para solicitar a atualização.",
+      "not-configured":"Configure o endereço do serviço de atualização antes de usar o botão.",
+      "origin-denied":"O endereço desta página precisa ser autorizado no serviço de atualização."
+    };
+    encerrarEsperaAtualizacao(messages[error.code] || "Não foi possível confirmar a solicitação. Verifique a configuração do gatilho e aguarde antes de tentar novamente.");
+  }
+});
+
+const loginView = document.getElementById("loginView");
+const appView = document.getElementById("appView");
+const loginButton = document.getElementById("loginButton");
+const logoutButton = document.getElementById("logoutButton");
+const loginError = document.getElementById("loginError");
+const tabAtual = document.getElementById("tabAtual");
+const tabHistorico = document.getElementById("tabHistorico");
+const viewAtual = document.getElementById("viewAtual");
+const viewHistorico = document.getElementById("viewHistorico");
+
+let unsubscribeGrade = null;
+let dadosGradeAtual = null;
+let diaSelecionado = null;
+let historicoCarregado = false;
+let snapshotsHistorico = [];
+
+loginButton.addEventListener("click", async () => {
+  loginError.textContent = "";
+  try {
+    await signInWithEmailAndPassword(
+      auth,
+      document.getElementById("email").value.trim(),
+      document.getElementById("password").value
+    );
+  } catch (error) {
+    console.error(error);
+    loginError.textContent = "Não foi possível realizar o login.";
+  }
+});
+document.getElementById("password").addEventListener("keydown", e => {
+  if (e.key === "Enter") loginButton.click();
+});
+logoutButton.addEventListener("click", () => signOut(auth));
+
+tabAtual.addEventListener("click", () => ativarAba("atual"));
+tabHistorico.addEventListener("click", async () => {
+  ativarAba("historico");
+  if (!historicoCarregado) await carregarHistorico();
+});
+
+document.getElementById("historyDate").addEventListener("change", preencherColetasHistorico);
+document.getElementById("historyBase").addEventListener("change", renderizarComparacaoHistorico);
+document.getElementById("historyCompare").addEventListener("change", renderizarComparacaoHistorico);
+
+onAuthStateChanged(auth, user => {
+  if (user) {
+    loginView.classList.add("hidden");
+    appView.classList.remove("hidden");
+    iniciarGrade();
+  } else {
+    loginView.classList.remove("hidden");
+    appView.classList.add("hidden");
+    updateGeneration++;
+    encerrarEsperaAtualizacao("");
+    historicoCarregado = false;
+    snapshotsHistorico = [];
+    if (unsubscribeGrade) {
+      unsubscribeGrade();
+      unsubscribeGrade = null;
+    }
+  }
+});
+
+function ativarAba(aba) {
+  const historico = aba === "historico";
+  viewAtual.classList.toggle("hidden", historico);
+  viewHistorico.classList.toggle("hidden", !historico);
+  tabAtual.classList.toggle("active", !historico);
+  tabHistorico.classList.toggle("active", historico);
+}
+
+function iniciarGrade() {
+  if (unsubscribeGrade) unsubscribeGrade();
+  unsubscribeGrade = onValue(ref(db, "gradeAtual"), snapshot => {
+    const dados = snapshot.val();
+    if (dados) {
+      renderizarGrade(dados);
+      if (pendingGrade && (!pendingGrade.baseline || Date.parse(dados.coletadoEm) > Date.parse(pendingGrade.baseline))) {
+        encerrarEsperaAtualizacao("Nova coleta recebida. Grade atualizada.");
+        historicoCarregado = false;
+        if (!viewHistorico.classList.contains("hidden")) carregarHistorico().catch(() => {
+          document.getElementById("dailyHistoryStatus").textContent = "Grade atualizada. Clique em Atualizar histórico para recarregar o consolidado.";
+        });
+      }
+    }
+  }, error => console.error("Erro ao ler gradeAtual:", error));
+}
+
+function dataHojeBrasil() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric", month: "2-digit", day: "2-digit"
+  }).format(new Date());
+}
+function formatarDataCurta(dataISO) {
+  if (!dataISO) return "-";
+  const [ano, mes, dia] = dataISO.split("-");
+  return `${dia}/${mes}`;
+}
+function formatarDataCompleta(dataISO) {
+  if (!dataISO) return "-";
+  const [ano, mes, dia] = dataISO.split("-");
+  return `${dia}/${mes}/${ano}`;
+}
+function formatarDataHora(iso) {
+  if (!iso) return "-";
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short", timeStyle: "medium", timeZone: "America/Sao_Paulo"
+  }).format(new Date(iso));
+}
+function formatarSomenteHora(iso) {
+  if (!iso) return "-";
+  return new Intl.DateTimeFormat("pt-BR", {
+    hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "America/Sao_Paulo"
+  }).format(new Date(iso));
+}
+function minutosEntre(a,b) {
+  const min = Math.round(Math.abs(new Date(b)-new Date(a))/60000);
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min/60), r = min%60;
+  return r ? `${h}h ${r}min` : `${h}h`;
+}
+
+/* Aceita o novo formato e mantém fallback para snapshots antigos. */
+function normalizarCategoria(valor) {
+  if (valor && typeof valor === "object") {
+    const disponibilizadas = Number(valor.disponibilizadas || 0);
+    const utilizadas = Number(valor.utilizadas || 0);
+    const disponiveis =
+      valor.disponiveis !== undefined
+        ? Number(valor.disponiveis || 0)
+        : Math.max(0, disponibilizadas - utilizadas);
+
+    return { disponibilizadas, utilizadas, disponiveis };
+  }
+
+  const disponibilizadas = Number(valor || 0);
+  return {
+    disponibilizadas,
+    utilizadas: 0,
+    disponiveis: disponibilizadas
+  };
+}
+
+function montarSeletorDias(dados) {
+  const dias = dados.semana?.dias;
+  if (!dias) return;
+  const ordem = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
+  const hoje = dataHojeBrasil();
+
+  if (!diaSelecionado || !dias[diaSelecionado]) {
+    diaSelecionado = ordem.find(d => dias[d] === hoje) || "Seg";
+  }
+
+  const selector = document.getElementById("daySelector");
+  selector.innerHTML = "";
+
+  for (const dia of ordem) {
+    const data = dias[dia];
+    if (!data) continue;
+
+    const button = document.createElement("button");
+    button.className = "day-button";
+    if (dia === diaSelecionado) button.classList.add("active");
+    if (data === hoje) button.classList.add("today");
+
+    button.innerHTML =
+      `<span class="day-button-name">${dia}</span>` +
+      `<span class="day-button-date">${formatarDataCurta(data)}</span>`;
+
+    button.addEventListener("click", () => {
+      diaSelecionado = dia;
+      renderizarGrade(dadosGradeAtual);
+    });
+    selector.appendChild(button);
+  }
+}
+
+
+function calcularDisponibilidadeRestante(dados, dia, agora = new Date()) {
+  const partes = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
+    timeZone:"America/Sao_Paulo", year:"numeric", month:"2-digit", day:"2-digit",
+    hour:"2-digit", minute:"2-digit", second:"2-digit", hourCycle:"h23"
+  }).formatToParts(agora).filter(p => p.type !== "literal").map(p => [p.type,p.value]));
+  const hoje = `${partes.year}-${partes.month}-${partes.day}`;
+  const segundoAtual = Number(partes.hour)*3600 + Number(partes.minute)*60 + Number(partes.second);
+  const data = dados.semana?.dias?.[dia];
+  const porCategoria = new Map();
+  let faixas = 0;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data || "")) return {data,total:null,porCategoria,faixas};
+  const valorValido = v => v !== undefined && v !== null && v !== "" && Number.isFinite(Number(v)) && Number(v) >= 0;
+  for (const periodo of Object.values(dados.grade?.periodos || {})) {
+    const cats = periodo.dias?.[dia]?.categorias;
+    if (!cats) continue;
+    for (const categoria of Object.keys(cats)) if (!porCategoria.has(categoria)) porCategoria.set(categoria,0);
+    const horario = /^(\d{2}):(\d{2})$/.exec(periodo.inicio || "");
+    if (!horario || Number(horario[1]) > 23 || Number(horario[2]) > 59) continue;
+    const inicio = Number(horario[1])*3600 + Number(horario[2])*60;
+    if (data < hoje || (data === hoje && inicio <= segundoAtual)) continue;
+    faixas++;
+    for (const [categoria,slot] of Object.entries(cats)) {
+      let disponiveis = null;
+      if (slot && typeof slot === "object") {
+        if (valorValido(slot.disponiveis)) disponiveis = Number(slot.disponiveis);
+        else if (valorValido(slot.disponibilizadas) && valorValido(slot.utilizadas)) disponiveis = Math.max(0,Number(slot.disponibilizadas)-Number(slot.utilizadas));
+      }
+      const anterior = porCategoria.get(categoria);
+      porCategoria.set(categoria, anterior === null || disponiveis === null ? null : anterior + disponiveis);
+    }
+  }
+  const valores = [...porCategoria.values()];
+  const total = valores.includes(null) ? null : valores.reduce((s,v)=>s+v,0);
+  return {data,total,porCategoria,faixas};
+}
+function renderizarResumoDisponivel() {
+  if (!dadosGradeAtual || !diaSelecionado) return;
+  const resumo = calcularDisponibilidadeRestante(dadosGradeAtual,diaSelecionado);
+  document.getElementById("recapDate").textContent = `${diaSelecionado}, ${formatarDataCompleta(resumo.data)}`;
+  document.getElementById("recapRule").textContent = resumo.data
+    ? `Somente o dia selecionado. ${resumo.faixas} faixas ainda não iniciadas. Horário de Brasília; faixas que já começaram não entram no resumo.`
+    : "A coleta não informa a data do dia selecionado.";
+  const grid = document.getElementById("availableRecap");
+  grid.replaceChildren();
+  const ordem = ["Operacional","Exp Cheio","Exp Vazio","Imp Cheio","Imp Vazio","VIP","DTC","DTA","Expresso","LAR","Exp BBK"];
+  const categorias = [...resumo.porCategoria.keys()].sort((a,b)=>{
+    const ia = ordem.indexOf(a), ib = ordem.indexOf(b);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b,"pt-BR");
+  });
+  for (const [nome,valor] of [["Total disponível",resumo.total],...categorias.map(c=>[c,resumo.porCategoria.get(c)])]) {
+    const item = document.createElement("div"); item.className = "recap-item" + (valor === 0 ? " zero" : "");
+    const label = document.createElement("div");label.className = "card-label";label.textContent = nome;
+    const value = document.createElement("div");value.className = "card-value";value.textContent = valor === null ? "Não registrado" : valor.toLocaleString("pt-BR");
+    item.append(label,value);grid.appendChild(item);
+  }
+}
+setInterval(renderizarResumoDisponivel,15000);
+document.addEventListener("visibilitychange",()=>{if (!document.hidden) renderizarResumoDisponivel();});
+
+function renderizarGrade(dados) {
+  dadosGradeAtual = dados;
+  const grade = dados.grade || {};
+  montarSeletorDias(dados);
+  renderizarResumoDisponivel();
+
+  document.getElementById("status").textContent = dados.status || "OK";
+  document.getElementById("updatedAt").textContent = formatarDataHora(dados.coletadoEm);
+  document.getElementById("periodCount").textContent = grade.quantidadePeriodos || 0;
+
+  const diasSemana = dados.semana?.dias || {};
+  const dataSelecionada = diasSemana[diaSelecionado];
+  document.getElementById("selectedDateTitle").textContent =
+    `${diaSelecionado || "-"}, ${formatarDataCompleta(dataSelecionada)}`;
+  document.getElementById("weekRange").textContent =
+    dados.semana?.inicio && dados.semana?.fim
+      ? `Semana: ${formatarDataCompleta(dados.semana.inicio)} a ${formatarDataCompleta(dados.semana.fim)}`
+      : "-";
+
+  const periodos = Object.values(grade.periodos || {});
+  const ordemPreferida = [
+    "Operacional","Exp Cheio","Exp Vazio","Imp Cheio","Imp Vazio",
+    "VIP","DTC","DTA","Expresso","LAR","Exp BBK"
+  ];
+  const categoriasExistentes = new Set();
+
+  for (const periodo of periodos) {
+    const dadosDia = periodo.dias?.[diaSelecionado];
+    if (!dadosDia) continue;
+    Object.keys(dadosDia.categorias || {}).forEach(c => categoriasExistentes.add(c));
+  }
+
+  const categorias = [
+    ...ordemPreferida.filter(c => categoriasExistentes.has(c)),
+    ...[...categoriasExistentes].filter(c => !ordemPreferida.includes(c))
+  ];
+
+  const header = document.getElementById("tableHeader");
+  header.innerHTML = "<th>Horário</th><th>Total</th>";
+  for (const categoria of categorias) {
+    const th = document.createElement("th");
+    th.textContent = categoria;
+    header.appendChild(th);
+  }
+
+  const tbody = document.getElementById("tableBody");
+  const emptyState = document.getElementById("emptyState");
+  tbody.innerHTML = "";
+
+  let totalOfertadas = 0;
+  let totalUtilizadas = 0;
+  let totalDisponiveis = 0;
+  let linhas = 0;
+
+  for (const periodo of periodos) {
+    const dadosDia = periodo.dias?.[diaSelecionado];
+    if (!dadosDia) continue;
+    linhas++;
+
+    const tr = document.createElement("tr");
+
+    const horario = document.createElement("td");
+    horario.textContent = `${periodo.inicio} - ${periodo.fim}`;
+    tr.appendChild(horario);
+
+    let usadasPeriodo = 0;
+    let ofertadasPeriodo = 0;
+
+    for (const categoria of categorias) {
+      const slot = normalizarCategoria(dadosDia.categorias?.[categoria]);
+      usadasPeriodo += slot.utilizadas;
+      ofertadasPeriodo += slot.disponibilizadas;
+    }
+
+    const total = document.createElement("td");
+    total.className = "total-cell";
+    total.innerHTML =
+      `<div class="slot-main">${usadasPeriodo} / ${ofertadasPeriodo}</div>` +
+      `<div class="slot-sub">${Math.max(0, ofertadasPeriodo-usadasPeriodo)} disponíveis</div>`;
+    tr.appendChild(total);
+
+    totalUtilizadas += usadasPeriodo;
+    totalOfertadas += ofertadasPeriodo;
+    totalDisponiveis += Math.max(0, ofertadasPeriodo-usadasPeriodo);
+
+    for (const categoria of categorias) {
+      const slot = normalizarCategoria(dadosDia.categorias?.[categoria]);
+      const td = document.createElement("td");
+      td.className = "slot-cell";
+
+      if (slot.disponibilizadas > 0 && slot.disponiveis === 0) {
+        td.classList.add("slot-full");
+      } else if (slot.disponibilizadas > 0 && slot.disponiveis > 0) {
+        td.classList.add("slot-free");
+      }
+
+      td.title =
+        `${categoria}: ${slot.utilizadas} utilizadas de ${slot.disponibilizadas} disponibilizadas, ` +
+        `${slot.disponiveis} disponíveis`;
+
+      td.innerHTML =
+        `<div class="slot-main">${slot.utilizadas} / ${slot.disponibilizadas}</div>` +
+        `<div class="slot-sub">${slot.disponiveis} disp.</div>`;
+
+      tr.appendChild(td);
+    }
+
+    tbody.appendChild(tr);
+  }
+
+  document.getElementById("dayOffered").textContent = totalOfertadas;
+  document.getElementById("dayUsed").textContent = totalUtilizadas;
+  document.getElementById("dayAvailable").textContent = totalDisponiveis;
+  emptyState.classList.toggle("hidden", linhas !== 0);
+}
+
+/* HISTÓRICO */
+async function carregarHistorico() {
+  const snap = await get(ref(db, "historicoGrade"));
+  const bruto = snap.val() || {};
+  const lista = [];
+
+  for (const [dataColeta, horas] of Object.entries(bruto)) {
+    for (const [horaChave, dados] of Object.entries(horas || {})) {
+      lista.push({
+        id:`${dataColeta}/${horaChave}`,
+        dataColeta,
+        horaChave,
+        coletadoEm:dados.coletadoEm,
+        dados
+      });
+    }
+  }
+
+  lista.sort((a,b) => new Date(a.coletadoEm)-new Date(b.coletadoEm));
+  snapshotsHistorico = lista;
+  historicoCarregado = true;
+  renderizarHistoricoDiario();
+  preencherDatasHistorico();
+}
+
+
+function resumoHistoricoDia(snapshot, data) {
+  const dia = chaveDiaParaData(snapshot, data);
+  let disponibilizadas = 0, utilizadas = 0, disponiveis = 0, registros = 0;
+  let temUtilizadas = true, temOfertadas = true;
+  for (const periodo of Object.values(snapshot.dados.grade?.periodos || {})) {
+    const categorias = periodo.dias?.[dia]?.categorias || {};
+    for (const valor of Object.values(categorias)) {
+      registros++;
+      const objeto = valor !== null && typeof valor === "object";
+      const oferta = objeto ? valor.disponibilizadas : valor;
+      const uso = objeto ? valor.utilizadas : undefined;
+      const valido = v => v !== null && v !== undefined && v !== "" && Number.isFinite(Number(v)) && Number(v) >= 0;
+      if (!valido(oferta)) temOfertadas = false;
+      else disponibilizadas += Number(oferta);
+      if (!valido(uso)) temUtilizadas = false;
+      else utilizadas += Number(uso);
+      if (valido(oferta) && valido(uso)) disponiveis += Math.max(0, Number(oferta) - Number(uso));
+    }
+  }
+  return {
+    disponibilizadas: registros && temOfertadas ? disponibilizadas : null,
+    utilizadas: registros && temUtilizadas ? utilizadas : null,
+    disponiveis: registros && temOfertadas && temUtilizadas ? disponiveis : null
+  };
+}
+function consolidarHistoricoDiario(snapshots) {
+  const ultimos = new Map();
+  for (const snapshot of snapshots) {
+    if (!Number.isFinite(Date.parse(snapshot.coletadoEm))) continue;
+    for (const data of datasCobertasPorSnapshot(snapshot)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) continue;
+      const dia = chaveDiaParaData(snapshot, data);
+      const temDados = Object.values(snapshot.dados.grade?.periodos || {}).some(p => Object.keys(p.dias?.[dia]?.categorias || {}).length);
+      if (!temDados) continue;
+      const anterior = ultimos.get(data);
+      if (!anterior || Date.parse(snapshot.coletadoEm) > Date.parse(anterior.coletadoEm)) ultimos.set(data, snapshot);
+    }
+  }
+  return [...ultimos].sort(([a],[b]) => b.localeCompare(a)).map(([data,snapshot]) => ({data,snapshot,...resumoHistoricoDia(snapshot,data)}));
+}
+function renderizarHistoricoDiario() {
+  const body = document.getElementById("dailyHistoryBody");
+  body.replaceChildren();
+  const linhas = consolidarHistoricoDiario(snapshotsHistorico);
+  const numero = v => v === null ? "Não registrado" : v.toLocaleString("pt-BR");
+  for (const linha of linhas) {
+    const tr = document.createElement("tr");
+    const ocupacao = linha.utilizadas !== null && linha.disponibilizadas > 0
+      ? (100 * linha.utilizadas / linha.disponibilizadas).toLocaleString("pt-BR", {maximumFractionDigits:1}) + "%"
+      : linha.utilizadas === null || linha.disponibilizadas === null ? "Não registrado" : "Não se aplica";
+    const valores = [formatarDataCompleta(linha.data), numero(linha.disponibilizadas), numero(linha.utilizadas), numero(linha.disponiveis), ocupacao, formatarDataHora(linha.snapshot.coletadoEm)];
+    for (const [i,valor] of valores.entries()) {
+      const td = document.createElement("td");td.textContent = valor;
+      if (i === 3 && linha.disponiveis !== null && linha.disponibilizadas > 0) td.style.color = linha.disponiveis > 0 ? "#15803d" : "#b91c1c";
+      tr.appendChild(td);
+    }
+    body.appendChild(tr);
+  }
+  const empty = document.getElementById("dailyHistoryEmpty");
+  empty.textContent = "Não há registros diários disponíveis.";
+  empty.classList.toggle("hidden", linhas.length > 0);
+  document.getElementById("dailyHistoryStatus").textContent = `${linhas.length} datas da grade. Quantidades ausentes aparecem como Não registrado.`;
+}
+document.getElementById("refreshHistory").addEventListener("click", async event => {
+  const button = event.currentTarget; button.disabled = true;
+  try { await carregarHistorico(); }
+  catch { document.getElementById("dailyHistoryStatus").textContent = "Não foi possível atualizar o histórico. Tente novamente."; }
+  finally { button.disabled = false; }
+});
+
+function datasCobertasPorSnapshot(s) {
+  return Object.values(s.dados.semana?.dias || {});
+}
+function preencherDatasHistorico() {
+  const select = document.getElementById("historyDate");
+  const datas = [...new Set(snapshotsHistorico.flatMap(datasCobertasPorSnapshot))].sort();
+  select.innerHTML = "";
+
+  for (const data of datas) {
+    const o = document.createElement("option");
+    o.value = data;
+    o.textContent = formatarDataCompleta(data);
+    select.appendChild(o);
+  }
+
+  const hoje = dataHojeBrasil();
+  if (datas.includes(hoje)) select.value = hoje;
+  else if (datas.length) select.value = datas[datas.length-1];
+
+  preencherColetasHistorico();
+}
+function chaveDiaParaData(s,data) {
+  const dias = s.dados.semana?.dias || {};
+  return Object.keys(dias).find(chave => dias[chave] === data) || null;
+}
+function snapshotsParaData(data) {
+  return snapshotsHistorico.filter(s => !!chaveDiaParaData(s,data));
+}
+function preencherColetasHistorico() {
+  const data = document.getElementById("historyDate").value;
+  const baseSel = document.getElementById("historyBase");
+  const compSel = document.getElementById("historyCompare");
+  const snaps = snapshotsParaData(data);
+
+  baseSel.innerHTML = "";
+  compSel.innerHTML = "";
+
+  for (const s of snaps) {
+    const label = `${formatarDataCompleta(s.dataColeta)} ${formatarSomenteHora(s.coletadoEm)}`;
+    for (const sel of [baseSel,compSel]) {
+      const o = document.createElement("option");
+      o.value = s.id;
+      o.textContent = label;
+      sel.appendChild(o);
+    }
+  }
+
+  if (snaps.length >= 2) {
+    baseSel.value = snaps[0].id;
+    compSel.value = snaps[snaps.length-1].id;
+  }
+
+  renderizarComparacaoHistorico();
+}
+function obterSnapshotPorId(id) {
+  return snapshotsHistorico.find(s => s.id === id);
+}
+function totalUtilizadoDia(snapshot,data) {
+  const dia = chaveDiaParaData(snapshot,data);
+  if (!dia) return 0;
+
+  let total = 0;
+  for (const p of Object.values(snapshot.dados.grade?.periodos || {})) {
+    const cats = p.dias?.[dia]?.categorias || {};
+    for (const valor of Object.values(cats)) {
+      total += normalizarCategoria(valor).utilizadas;
+    }
+  }
+  return total;
+}
+function mapaUtilizadasPorPeriodo(snapshot,data) {
+  const dia = chaveDiaParaData(snapshot,data);
+  const mapa = {};
+  if (!dia) return mapa;
+
+  for (const p of Object.values(snapshot.dados.grade?.periodos || {})) {
+    let total = 0;
+    const cats = p.dias?.[dia]?.categorias || {};
+    for (const valor of Object.values(cats)) {
+      total += normalizarCategoria(valor).utilizadas;
+    }
+    mapa[`${p.inicio}-${p.fim}`] = total;
+  }
+  return mapa;
+}
+function renderizarComparacaoHistorico() {
+  const data = document.getElementById("historyDate").value;
+  const base = obterSnapshotPorId(document.getElementById("historyBase").value);
+  const comp = obterSnapshotPorId(document.getElementById("historyCompare").value);
+  const body = document.getElementById("historyBody");
+  const empty = document.getElementById("historyEmpty");
+  body.innerHTML = "";
+
+  if (!base || !comp || base.id === comp.id) {
+    empty.classList.remove("hidden");
+    ["historyTotalBase","historyTotalCompare","historyDelta","historyInterval"]
+      .forEach(id => document.getElementById(id).textContent = "-");
+    return;
+  }
+
+  empty.classList.add("hidden");
+
+  const totalBase = totalUtilizadoDia(base,data);
+  const totalComp = totalUtilizadoDia(comp,data);
+  const delta = totalComp-totalBase;
+
+  document.getElementById("historyTotalBase").textContent = totalBase;
+  document.getElementById("historyTotalCompare").textContent = totalComp;
+
+  const deltaEl = document.getElementById("historyDelta");
+  deltaEl.textContent = `${delta>0?"+":""}${delta}`;
+  deltaEl.className =
+    "summary-value " + (delta>0?"delta-positive":delta<0?"delta-negative":"delta-neutral");
+
+  document.getElementById("historyInterval").textContent =
+    minutosEntre(base.coletadoEm,comp.coletadoEm);
+
+  const mapaBase = mapaUtilizadasPorPeriodo(base,data);
+  const mapaComp = mapaUtilizadasPorPeriodo(comp,data);
+  const periodos = [...new Set([...Object.keys(mapaBase),...Object.keys(mapaComp)])].sort();
+
+  for (const periodo of periodos) {
+    const a = mapaBase[periodo] || 0;
+    const b = mapaComp[periodo] || 0;
+    const d = b-a;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${periodo.replace("-", " - ")}</td>
+      <td>${a}</td>
+      <td>${b}</td>
+      <td class="${d>0?"delta-up":d<0?"delta-down":"delta-zero"}">${d>0?"+":""}${d}</td>
+    `;
+    body.appendChild(tr);
+  }
+}
+
+/* =========================================================
+   CABEÇALHO FLUTUANTE DA TABELA
+   ========================================================= */
+const floatingHeader = document.getElementById("floatingTableHeader");
+let floatingSourceWrap = null;
+let floatingSourceTable = null;
+let floatingCloneTable = null;
+let floatingRaf = 0;
+
+function construirFloatingHeader(wrap) {
+  const table = wrap?.querySelector("table");
+  const thead = table?.querySelector("thead");
+
+  if (!table || !thead) return;
+
+  floatingHeader.innerHTML = "";
+
+  const cloneTable = document.createElement("table");
+  cloneTable.className = table.className;
+
+  const cloneHead = thead.cloneNode(true);
+  cloneHead.querySelectorAll("[id]").forEach(el => el.removeAttribute("id"));
+  cloneTable.appendChild(cloneHead);
+
+  floatingHeader.appendChild(cloneTable);
+
+  floatingSourceWrap = wrap;
+  floatingSourceTable = table;
+  floatingCloneTable = cloneTable;
+
+  sincronizarFloatingHeader();
+}
+
+function sincronizarLargurasFloating() {
+  if (!floatingSourceTable || !floatingCloneTable) return;
+
+  const originais = [...floatingSourceTable.querySelectorAll("thead th")];
+  const clones = [...floatingCloneTable.querySelectorAll("thead th")];
+
+  if (!originais.length || originais.length !== clones.length) return;
+
+  const larguras = originais.map(th => th.getBoundingClientRect().width);
+  const larguraTotal = larguras.reduce((soma, largura) => soma + largura, 0);
+
+  let colgroup = floatingCloneTable.querySelector("colgroup");
+
+  if (!colgroup) {
+    colgroup = document.createElement("colgroup");
+    floatingCloneTable.insertBefore(colgroup, floatingCloneTable.firstChild);
+  }
+
+  colgroup.innerHTML = "";
+
+  larguras.forEach((largura, i) => {
+    const col = document.createElement("col");
+    col.style.width = `${largura}px`;
+    col.style.minWidth = `${largura}px`;
+    col.style.maxWidth = `${largura}px`;
+    colgroup.appendChild(col);
+
+    clones[i].style.width = `${largura}px`;
+    clones[i].style.minWidth = `${largura}px`;
+    clones[i].style.maxWidth = `${largura}px`;
+    clones[i].style.boxSizing = "border-box";
+  });
+
+  floatingCloneTable.style.width = `${larguraTotal}px`;
+  floatingCloneTable.style.minWidth = `${larguraTotal}px`;
+  floatingCloneTable.style.maxWidth = `${larguraTotal}px`;
+}
+
+function sincronizarFloatingHeader() {
+  if (!floatingSourceWrap || !floatingSourceTable || !floatingCloneTable) return;
+
+  const appHeader = document.querySelector("header");
+  const topOffset = appHeader ? appHeader.getBoundingClientRect().bottom : 0;
+
+  const wrapRect = floatingSourceWrap.getBoundingClientRect();
+  const thead = floatingSourceTable.querySelector("thead");
+  const theadRect = thead.getBoundingClientRect();
+
+  const headerHeight = theadRect.height || 36;
+
+  // O original mantém a altura da linha e os rótulos acessíveis.
+  const deveFlutuar = theadRect.top < topOffset &&
+    wrapRect.bottom > topOffset && floatingSourceWrap.offsetParent !== null;
+  if (!deveFlutuar) {
+    floatingHeader.classList.remove("visible");
+    return;
+  }
+  sincronizarLargurasFloating();
+  const topAtual = Math.min(topOffset, wrapRect.bottom - headerHeight);
+
+  floatingHeader.style.top = `${topAtual}px`;
+  floatingHeader.style.left = `${wrapRect.left + floatingSourceWrap.clientLeft}px`;
+  floatingHeader.style.width = `${floatingSourceWrap.clientWidth}px`;
+  floatingHeader.style.height = `${headerHeight}px`;
+
+  floatingCloneTable.style.transform =
+    `translateX(${-floatingSourceWrap.scrollLeft}px)`;
+
+  const firstClone = floatingCloneTable.querySelector("th");
+  if (firstClone) {
+    firstClone.style.transform = `translateX(${floatingSourceWrap.scrollLeft}px)`;
+    firstClone.style.setProperty("z-index", "5", "important");
+  }
+  floatingHeader.classList.add("visible");
+}
+
+function atualizarFloatingHeader() {
+  if (floatingRaf) cancelAnimationFrame(floatingRaf);
+
+  floatingRaf = requestAnimationFrame(() => {
+    const viewAtualVisivel = !viewAtual.classList.contains("hidden");
+    const viewHistoricoVisivel = !viewHistorico.classList.contains("hidden");
+
+    let wrap = null;
+
+    if (viewAtualVisivel) {
+      wrap = viewAtual.querySelector(".table-wrap");
+    } else if (viewHistoricoVisivel) {
+      const wraps = [...viewHistorico.querySelectorAll(".table-wrap")];
+      const limite = document.querySelector("header").getBoundingClientRect().bottom;
+      wrap = wraps.find(w => w.getBoundingClientRect().bottom > limite) || null;
+    }
+
+    if (!wrap) {
+      floatingHeader.classList.remove("visible");
+      return;
+    }
+
+    if (floatingSourceWrap !== wrap) {
+      construirFloatingHeader(wrap);
+    } else {
+      sincronizarFloatingHeader();
+    }
+  });
+}
+
+window.addEventListener("scroll", atualizarFloatingHeader, { passive: true });
+window.addEventListener("resize", atualizarFloatingHeader);
+new ResizeObserver(atualizarFloatingHeader).observe(appView);
+new ResizeObserver(atualizarFloatingHeader).observe(document.querySelector("header"));
+
+document.querySelectorAll(".table-wrap").forEach(wrap => {
+  wrap.addEventListener("scroll", atualizarFloatingHeader, { passive: true });
+});
+
+/* Recria o clone quando a tabela atual muda de colunas/dia. */
+const observerFloating = new MutationObserver(() => {
+  floatingSourceWrap = null;
+  atualizarFloatingHeader();
+});
+
+observerFloating.observe(document.getElementById("tableHeader"), {
+  childList: true,
+  subtree: true
+});
+
+observerFloating.observe(document.getElementById("dailyHistoryBody"), {childList: true, subtree: true});
+
+observerFloating.observe(document.getElementById("historyBody"), {
+  childList: true,
+  subtree: true
+});
+
+tabAtual.addEventListener("click", () => {
+  floatingSourceWrap = null;
+  setTimeout(atualizarFloatingHeader, 0);
+});
+
+tabHistorico.addEventListener("click", () => {
+  floatingSourceWrap = null;
+  setTimeout(atualizarFloatingHeader, 0);
+});
+
+setTimeout(atualizarFloatingHeader, 0);
+
+</script>
+</body>
+</html>
