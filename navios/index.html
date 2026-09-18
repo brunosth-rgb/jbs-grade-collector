@@ -204,7 +204,7 @@ tbody tr:hover td.sticky2{background:#f8fafc}
         <div class="upload-icon">↻</div>
         <div>
           <div class="upload-title">Dados automáticos de navios</div>
-          <div class="upload-sub">Fonte: data/navios-latest.json publicado pelo Apps Script no GitHub. O carregamento ocorre automaticamente ao abrir a página.</div>
+          <div class="upload-sub">Fonte: navios/data/navios-latest.json publicado pelo Apps Script no GitHub. O carregamento ocorre automaticamente ao abrir a página.</div>
         </div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -358,7 +358,7 @@ const STORAGE = {
   lastJsonMeta: "controleGradeMock_lastJsonMeta_v1"
 };
 
-const NAVIOS_JSON_URL = "data/navios-latest.json";
+const NAVIOS_JSON_URL = "https://brunosth-rgb.github.io/jbs-grade-collector/navios/data/navios-latest.json";
 
 
 let vessels = [];
@@ -526,7 +526,7 @@ async function loadJsonData(force=false){
       toast("Falha ao atualizar JSON. Usando cache local.");
     }else{
       el("jsonSourceInfo").textContent =
-        "Não foi possível carregar data/navios-latest.json. Verifique se o Apps Script já publicou o arquivo.";
+        "Não foi possível carregar navios/data/navios-latest.json. Verifique se o Apps Script já publicou o arquivo.";
       throw err;
     }
   }finally{
