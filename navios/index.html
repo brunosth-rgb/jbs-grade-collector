@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Controle de Grade - Mock-up Navios</title>
+<title>Controle de Grade - Navios v29</title>
+<script>
+try{document.documentElement.dataset.theme=localStorage.getItem("controleGrade_theme_v1")==="light"?"light":"dark";}catch{document.documentElement.dataset.theme="dark";}
+</script>
 <style>
 *{box-sizing:border-box}
 :root{
@@ -163,6 +166,40 @@ tbody tr:hover td.sticky2{background:#f8fafc}
 @media(max-width:520px){
   .cards{grid-template-columns:1fr}
 }
+
+:root{color-scheme:light}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#10151f;--card:#1a2230;--soft:#222d3d;--border:#354258;
+  --text:#e6edf7;--muted:#a9b7cc;--blue:#343f9c;
+  --green-dark:#8ce5ac;--green-soft:#17372a;
+  --red:#ffa5ad;--red-soft:#40232d;--amber:#ffd17a;--amber-soft:#403421;--info:#9ccaff;
+}
+[data-theme="dark"] .card,[data-theme="dark"] .toolbar,
+[data-theme="dark"] .history-card,[data-theme="dark"] .table-shell,
+[data-theme="dark"] .upload-card,[data-theme="dark"] .modal,
+[data-theme="dark"] #loginView{background:var(--card)!important}
+[data-theme="dark"] tbody td,[data-theme="dark"] td.sticky,
+[data-theme="dark"] td.sticky2{background:var(--card)}
+[data-theme="dark"] tbody tr:hover td{background:var(--soft)}
+[data-theme="dark"] .card-value,[data-theme="dark"] .upload-title,
+[data-theme="dark"] .empty strong,[data-theme="dark"] td.sticky,
+[data-theme="dark"] .modal h3,[data-theme="dark"] #loginView h2,
+[data-theme="dark"] .date-main,[data-theme="dark"] .modal p{color:var(--text)}
+[data-theme="dark"] input,[data-theme="dark"] select,[data-theme="dark"] textarea{
+  background:var(--bg);color:var(--text);border-color:var(--border)
+}
+[data-theme="dark"] .tab{background:var(--card);color:var(--text);border-color:var(--border)}
+[data-theme="dark"] .tab.active{background:var(--blue);color:#fff}
+[data-theme="dark"] .btn-secondary,[data-theme="dark"] .btn-ghost,
+[data-theme="dark"] .upload-icon,[data-theme="dark"] .phase-pill{background:#2a3555;color:#dce5ff}
+[data-theme="dark"] .btn-danger{background:var(--red-soft);color:var(--red);border-color:#79414d}
+[data-theme="dark"] .gate-btn.closed{border-color:#79414d}
+[data-theme="dark"] .gate-btn.open{border-color:#356c4c}
+[data-theme="dark"] .info-strip{background:#1b2b45;border-color:#3a547d;color:#c2d9ff}
+[data-theme="dark"] .upload-card{border-color:#596895}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #91d700;outline-offset:3px}
+
 </style>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
@@ -173,6 +210,7 @@ tbody tr:hover td.sticky2{background:#f8fafc}
   <input id="loginEmail" type="email" placeholder="E-mail" autocomplete="username" style="width:100%;padding:11px 12px;border:1px solid #d1d5db;border-radius:7px;margin-bottom:12px">
   <input id="loginPassword" type="password" placeholder="Senha" autocomplete="current-password" style="width:100%;padding:11px 12px;border:1px solid #d1d5db;border-radius:7px;margin-bottom:12px">
   <button id="loginButton" class="btn btn-primary" style="width:100%">Entrar</button>
+  <button type="button" class="btn btn-ghost theme-toggle" style="margin-top:12px;width:100%" aria-label="Alternar modo escuro">Modo claro</button>
   <div id="loginError" style="margin-top:10px;color:var(--red);font-size:13px"></div>
 </div>
 
@@ -186,6 +224,7 @@ tbody tr:hover td.sticky2{background:#f8fafc}
     </div>
   </div>
   <div class="header-actions">
+    <button type="button" class="btn btn-secondary theme-toggle" aria-label="Alternar modo escuro">Modo claro</button>
     <span id="userEmail" style="font-size:12px;opacity:.85"></span>
     <button id="clearLocalBtn" class="btn btn-danger">Limpar cache local</button>
     <button id="logoutBtn" class="btn btn-secondary">Sair</button>
@@ -322,6 +361,26 @@ tbody tr:hover td.sticky2{background:#f8fafc}
   </div>
 </div>
 
+<script>
+(function(){
+  const buttons=document.querySelectorAll(".theme-toggle");
+  function refresh(){
+    const dark=document.documentElement.dataset.theme==="dark";
+    buttons.forEach(button=>{
+      button.textContent=dark?"Modo claro":"Modo escuro";
+      button.setAttribute("aria-label",dark?"Ativar modo claro":"Ativar modo escuro");
+      button.setAttribute("aria-pressed",String(dark));
+    });
+  }
+  buttons.forEach(button=>button.addEventListener("click",()=>{
+    const theme=document.documentElement.dataset.theme==="dark"?"light":"dark";
+    document.documentElement.dataset.theme=theme;
+    try{localStorage.setItem("controleGrade_theme_v1",theme);}catch{}
+    refresh();
+  }));
+  refresh();
+})();
+</script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
 import {
