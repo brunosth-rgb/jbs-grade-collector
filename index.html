@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Controle de Grade</title>
+<script>
+try{
+  document.documentElement.dataset.theme =
+    localStorage.getItem("controleGrade_theme_v2")==="dark" ? "dark" : "light";
+}catch{
+  document.documentElement.dataset.theme="light";
+}
+</script>
 <style>
 *{box-sizing:border-box}
 :root{
@@ -246,6 +254,93 @@ tr:hover td:first-child{background:#f8fafc}
 .recap-item.zero{background:#f4f6f8}
 .recap-item .card-value{color:#166534;font-size:22px}
 .recap-item .card-label{font-size:11px;text-transform:none}
+
+:root{color-scheme:light}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#10151f;
+  --card:#1a2230;
+  --border:#354258;
+  --muted:#a9b7cc;
+  --text:#e6edf7;
+  --soft:#222d3d;
+  --soft-blue:#232d4c;
+  --ok:#8ce5ac;
+  --warn:#ffd17a;
+  --danger:#ffa5ad;
+  --danger-bg:#40232d;
+}
+[data-theme="dark"] body{background:var(--bg);color:var(--text)}
+[data-theme="dark"] .login-box,
+[data-theme="dark"] .card,
+[data-theme="dark"] .section-card,
+[data-theme="dark"] .table-wrap,
+[data-theme="dark"] .nav-tab,
+[data-theme="dark"] input,
+[data-theme="dark"] select{
+  background:var(--card);
+  color:var(--text);
+  border-color:var(--border);
+}
+[data-theme="dark"] .login-box h2,
+[data-theme="dark"] .card-value,
+[data-theme="dark"] .section-title,
+[data-theme="dark"] .summary-value,
+[data-theme="dark"] .slot-main{
+  color:var(--text);
+}
+[data-theme="dark"] .btn-secondary{
+  background:#2a3555;
+  color:#dce5ff;
+}
+[data-theme="dark"] .nav-tab{color:var(--text)}
+[data-theme="dark"] .nav-tab.active,
+[data-theme="dark"] .day-button.active{
+  background:var(--blue);
+  color:#fff;
+  border-color:var(--blue);
+}
+[data-theme="dark"] .day-button{
+  background:var(--card);
+  color:var(--text);
+  border-color:var(--border);
+}
+[data-theme="dark"] .day-button:hover{border-color:#7d8cff}
+[data-theme="dark"] td{
+  background:var(--card);
+  color:var(--text);
+  border-bottom-color:var(--border);
+}
+[data-theme="dark"] td:first-child{background:var(--card)}
+[data-theme="dark"] tr:hover td,
+[data-theme="dark"] tr:hover td:first-child{background:var(--soft)}
+[data-theme="dark"] .total-cell{
+  background:var(--soft-blue)!important;
+  color:#dce5ff;
+}
+[data-theme="dark"] .slot-cell.slot-free{background:#17372a}
+[data-theme="dark"] .slot-cell.slot-free .slot-main,
+[data-theme="dark"] .slot-cell.slot-free .slot-sub{color:#8ce5ac}
+[data-theme="dark"] .slot-cell.slot-full{background:var(--danger-bg)}
+[data-theme="dark"] .slot-cell.slot-full .slot-main,
+[data-theme="dark"] .slot-cell.slot-full .slot-sub{color:var(--danger)}
+[data-theme="dark"] .summary-box{
+  background:var(--soft);
+  border-color:var(--border);
+}
+[data-theme="dark"] .available-recap{border-color:#356c4c}
+[data-theme="dark"] .recap-item{background:#17372a}
+[data-theme="dark"] .recap-item.zero{background:var(--soft)}
+[data-theme="dark"] .recap-item .card-value{color:#8ce5ac}
+[data-theme="dark"] .legend-dot.free{background:#4ade80}
+[data-theme="dark"] .legend-dot.full{background:#fb7185}
+[data-theme="dark"] input::placeholder{color:#8190a6}
+button:focus-visible,input:focus-visible,select:focus-visible{
+  outline:2px solid var(--green);
+  outline-offset:3px;
+}
+.theme-toggle{white-space:nowrap}
+
 </style>
 </head>
 
@@ -256,6 +351,7 @@ tr:hover td:first-child{background:#f8fafc}
   <input id="email" type="email" placeholder="E-mail" autocomplete="username">
   <input id="password" type="password" placeholder="Senha" autocomplete="current-password">
   <button id="loginButton" class="btn-primary">Entrar</button>
+  <button type="button" class="btn-secondary theme-toggle" style="width:100%;margin-top:10px">Modo escuro</button>
   <div id="loginError" class="error"></div>
 </div>
 
@@ -266,6 +362,7 @@ tr:hover td:first-child{background:#f8fafc}
     </div>
     <div class="header-right">
       <div class="online-indicator"><span class="online-dot"></span><span>Online</span></div>
+      <button type="button" class="btn-secondary theme-toggle">Modo escuro</button>
       <button id="updateNowButton" class="btn-secondary">Atualizar Agora</button>
       <button id="logoutButton" class="btn-secondary">Sair</button>
     </div>
@@ -418,6 +515,33 @@ tr:hover td:first-child{background:#f8fafc}
     </section>
   </main>
 </div>
+
+
+<script>
+(function(){
+  const buttons = document.querySelectorAll(".theme-toggle");
+
+  function refreshThemeButtons(){
+    const dark = document.documentElement.dataset.theme === "dark";
+    buttons.forEach(button=>{
+      button.textContent = dark ? "Modo claro" : "Modo escuro";
+      button.setAttribute("aria-label", dark ? "Ativar modo claro" : "Ativar modo escuro");
+      button.setAttribute("aria-pressed", String(dark));
+    });
+  }
+
+  buttons.forEach(button=>{
+    button.addEventListener("click", ()=>{
+      const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+      document.documentElement.dataset.theme = next;
+      try{ localStorage.setItem("controleGrade_theme_v2", next); }catch{}
+      refreshThemeButtons();
+    });
+  });
+
+  refreshThemeButtons();
+})();
+</script>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
