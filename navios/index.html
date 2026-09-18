@@ -214,6 +214,7 @@ tbody tr:hover td.sticky2{background:#f8fafc}
 
     <div class="info-strip">
       ETA, deadlines e primeiro ETA vêm do JSON automático. Os status dos Gates e o histórico são compartilhados pelo Firebase entre os usuários autenticados e atualizados em tempo real. Este navegador mantém apenas o cache dos navios e do primeiro ETA.
+      <span id="sharedSyncInfo" role="status" style="display:block;margin-top:6px">v28: aguardando login e leitura do Firebase...</span>
       <span id="jsonSourceInfo" style="display:block;margin-top:4px"></span>
     </div>
 
@@ -370,6 +371,8 @@ let pendingGateChange = null;
 let gateSaveInProgress = false;
 let unsubscribeGates = null;
 let unsubscribeHistory = null;
+let unsubscribeConnection = null;
+const sharedSync = {connection:"conectando", gates:"aguardando", history:"aguardando"};
 
 const el = id => document.getElementById(id);
 
@@ -452,7 +455,26 @@ function showGateError(err){
   const status = el("modalStatus");
   if(status){ status.textContent = message; status.style.color = "var(--red)"; }
 }
+function renderSharedSync(){
+  const target = el("sharedSyncInfo");
+  if(!target) return;
+  target.textContent = `v28 · Firebase: ${sharedSync.connection} · Gates: ${sharedSync.gates} · Histórico: ${sharedSync.history}`;
+  target.style.color = [sharedSync.gates, sharedSync.history].some(x=>x.startsWith("ERRO")) ? "var(--red)" : "var(--muted)";
+}
+function sharedReadError(section, err){
+  console.error(`Falha de leitura compartilhada (${section}):`, err);
+  sharedSync[section] = `ERRO ${String(err?.code || "")} ${err?.message || "Leitura indisponível"}`;
+  renderSharedSync();
+}
 function startSharedListeners(){
+  sharedSync.gates = "carregando";
+  sharedSync.history = "carregando";
+  renderSharedSync();
+  if(unsubscribeConnection) unsubscribeConnection();
+  unsubscribeConnection = onValue(ref(db, ".info/connected"), snapshot=>{
+    sharedSync.connection = snapshot.val() ? "conectado" : "sem conexão (alterações podem aguardar envio)";
+    renderSharedSync();
+  }, err=>sharedReadError("gates", err));
   if(unsubscribeGates) unsubscribeGates();
   if(unsubscribeHistory) unsubscribeHistory();
   unsubscribeGates = onValue(ref(db, "controleGate"), snapshot=>{
@@ -466,13 +488,17 @@ function startSharedListeners(){
       shared[String(record.visit ?? key)] = state;
     }
     gatesMap = shared;
-    render();
-  }, showGateError);
+    sharedSync.gates = `${Object.keys(shared).length} escalas lidas`;
+    renderSharedSync();
+    try{render();}catch(err){sharedReadError("gates", err);}
+  }, err=>sharedReadError("gates", err));
   unsubscribeHistory = onValue(ref(db, "historicoGate"), snapshot=>{
     historyEvents = Object.entries(snapshot.val() || {}).map(([id, event])=>({...event, id}))
       .sort((a,b)=>String(b.timestamp || "").localeCompare(String(a.timestamp || "")));
-    renderHistory();
-  }, showGateError);
+    sharedSync.history = `${historyEvents.length} eventos lidos`;
+    renderSharedSync();
+    try{renderHistory();}catch(err){sharedReadError("history", err);}
+  }, err=>sharedReadError("history", err));
 }
 function ensureGateState(visit){
   if(!gatesMap[visit]){
@@ -743,6 +769,7 @@ async function confirmGateChange(){
     toast(`${categoryLabel(cat)} ${gateLabel(next).toLowerCase()} para ${v.navio}.`);
   }catch(err){
     showGateError(err);
+    sharedReadError("gates", err);
   }finally{
     gateSaveInProgress = false;
     if(confirmBtn){confirmBtn.disabled = false; confirmBtn.textContent = "Confirmar";}
@@ -950,6 +977,9 @@ onAuthStateChanged(auth,user=>{
   }else{
     loginView.classList.remove("hidden");
     appView.classList.add("hidden");
+    if(unsubscribeConnection){unsubscribeConnection();unsubscribeConnection=null;}
+    gatesMap = {};
+    historyEvents = [];
     if(unsubscribeGates){unsubscribeGates();unsubscribeGates=null;}
     if(unsubscribeHistory){unsubscribeHistory();unsubscribeHistory=null;}
   }
