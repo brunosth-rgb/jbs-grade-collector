@@ -167,6 +167,16 @@ tbody tr:hover td.sticky2{background:#f8fafc}
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
+<div id="loginView" style="width:380px;max-width:calc(100% - 32px);margin:100px auto;padding:28px;background:#fff;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.08)">
+  <h2 style="margin:0 0 8px;color:var(--navy)">Controle de Grade</h2>
+  <p style="margin:0 0 22px;color:var(--muted);font-size:13px">Entre com seu usuário autorizado para acessar o módulo de Navios.</p>
+  <input id="loginEmail" type="email" placeholder="E-mail" autocomplete="username" style="width:100%;padding:11px 12px;border:1px solid #d1d5db;border-radius:7px;margin-bottom:12px">
+  <input id="loginPassword" type="password" placeholder="Senha" autocomplete="current-password" style="width:100%;padding:11px 12px;border:1px solid #d1d5db;border-radius:7px;margin-bottom:12px">
+  <button id="loginButton" class="btn btn-primary" style="width:100%">Entrar</button>
+  <div id="loginError" style="margin-top:10px;color:var(--red);font-size:13px"></div>
+</div>
+
+<div id="appView" class="hidden">
 <header>
   <div class="brand">
     <div class="brand-mark">G</div>
@@ -176,7 +186,9 @@ tbody tr:hover td.sticky2{background:#f8fafc}
     </div>
   </div>
   <div class="header-actions">
-    <button id="clearLocalBtn" class="btn btn-danger">Limpar dados locais</button>
+    <span id="userEmail" style="font-size:12px;opacity:.85"></span>
+    <button id="clearLocalBtn" class="btn btn-danger">Limpar cache local</button>
+    <button id="logoutBtn" class="btn btn-secondary">Sair</button>
   </div>
 </header>
 
@@ -282,7 +294,7 @@ tbody tr:hover td.sticky2{background:#f8fafc}
     <div class="table-shell">
       <table class="history-table">
         <thead>
-          <tr><th>Data/Hora</th><th>Serviço</th><th>Navio</th><th>Viagem</th><th>Visit</th><th>ETA no momento</th><th>Categoria</th><th>Status</th><th>Observação</th></tr>
+          <tr><th>Data/Hora</th><th>Serviço</th><th>Navio</th><th>Viagem</th><th>Visit</th><th>ETA no momento</th><th>Categoria</th><th>Status</th><th>Observação</th><th>Usuário</th></tr>
         </thead>
         <tbody id="historyBody"></tbody>
       </table>
@@ -290,6 +302,8 @@ tbody tr:hover td.sticky2{background:#f8fafc}
     </div>
   </section>
 </main>
+
+</div>
 
 <div id="toast" class="toast hidden"></div>
 
@@ -306,11 +320,40 @@ tbody tr:hover td.sticky2{background:#f8fafc}
   </div>
 </div>
 
-<script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+import {
+  getDatabase,
+  ref,
+  onValue,
+  get,
+  set,
+  update,
+  push
+} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDhT2vV3ThNIkCIhUR6D_-7hTnbGejFgqo",
+  authDomain: "jbs-controlegrade.firebaseapp.com",
+  databaseURL: "https://jbs-controlegrade-default-rtdb.firebaseio.com",
+  projectId: "jbs-controlegrade",
+  storageBucket: "jbs-controlegrade.firebasestorage.app",
+  messagingSenderId: "261111959651",
+  appId: "1:261111959651:web:f8f8f366ff6b9bd5c46856"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+const db = getDatabase(firebaseApp);
+
 const STORAGE = {
   firstEta: "controleGradeMock_firstEta_v1",
-  gates: "controleGradeMock_gates_v1",
-  history: "controleGradeMock_history_v2",
   lastData: "controleGradeMock_lastData_v2",
   lastJsonMeta: "controleGradeMock_lastJsonMeta_v1"
 };
@@ -320,16 +363,11 @@ const NAVIOS_JSON_URL = "data/navios-latest.json";
 
 let vessels = [];
 let firstEtaMap = readJSON(STORAGE.firstEta, {});
-let gatesMap = readJSON(STORAGE.gates, {});
-let historyEvents = readJSON(STORAGE.history, []);
-if (!historyEvents.length) {
-  const legacyHistory = readJSON("controleGradeMock_history_v1", []);
-  if (legacyHistory.length) {
-    historyEvents = legacyHistory.map(h => ({...h, eta:h.eta || "", notes:h.notes || ""}));
-    saveJSON(STORAGE.history, historyEvents);
-  }
-}
+let gatesMap = {};
+let historyEvents = [];
 let pendingGateChange = null;
+let unsubscribeGates = null;
+let unsubscribeHistory = null;
 
 const el = id => document.getElementById(id);
 
@@ -437,7 +475,6 @@ function processPayload(payload){
   }
 
   saveJSON(STORAGE.firstEta, firstEtaMap);
-  saveJSON(STORAGE.gates, gatesMap);
   saveJSON(STORAGE.lastData, vessels);
   saveJSON(STORAGE.lastJsonMeta, {
     atualizadoEm: payload.atualizadoEm || "",
@@ -613,28 +650,54 @@ function requestGateChange(visit,cat){
   el("modalNotes").value = "";
   el("confirmModal").classList.remove("hidden");
 }
-function confirmGateChange(){
-  if(!pendingGateChange) return;
+async function confirmGateChange(){
+  if(!pendingGateChange || !auth.currentUser) return;
+
   const {v,cat,next}=pendingGateChange;
-  ensureGateState(v.visit)[cat]=next;
-  saveJSON(STORAGE.gates,gatesMap);
-  historyEvents.unshift({
-    timestamp:new Date().toISOString(),
-    servico:v.servico,
-    navio:v.navio,
-    viagem:v.viagem,
-    visit:v.visit,
-    eta:v.eta,
-    categoria:cat,
-    status:next,
-    notes:el("modalNotes").value.trim()
-  });
-  saveJSON(STORAGE.history,historyEvents);
-  pendingGateChange=null;
-  el("confirmModal").classList.add("hidden");
-  render();
-  toast(`${categoryLabel(cat)} ${gateLabel(next).toLowerCase()} para ${v.navio}.`);
+  const notes=el("modalNotes").value.trim();
+  const now=new Date().toISOString();
+  const key=firebaseKey(v.visit);
+  const firebaseCategory = cat === "gate10d" ? "vip" : cat;
+
+  el("modalConfirm").disabled = true;
+
+  try{
+    await update(ref(db,`controleGate/${key}`),{
+      visit:v.visit,
+      servico:v.servico,
+      navio:v.navio,
+      viagem:v.viagem,
+      [`${firebaseCategory}/status`]:next,
+      [`${firebaseCategory}/alteradoEm`]:now,
+      [`${firebaseCategory}/alteradoPor`]:auth.currentUser.uid,
+      [`${firebaseCategory}/alteradoPorEmail`]:auth.currentUser.email || ""
+    });
+
+    await push(ref(db,"historicoGate"),{
+      timestamp:now,
+      servico:v.servico,
+      navio:v.navio,
+      viagem:v.viagem,
+      visit:v.visit,
+      eta:v.eta,
+      categoria:cat,
+      status:next,
+      notes:notes,
+      usuarioUid:auth.currentUser.uid,
+      usuarioEmail:auth.currentUser.email || ""
+    });
+
+    pendingGateChange=null;
+    el("confirmModal").classList.add("hidden");
+    toast(`${categoryLabel(cat)} ${gateLabel(next).toLowerCase()} para ${v.navio}.`);
+  }catch(err){
+    console.error(err);
+    alert("Não foi possível salvar a alteração no Firebase. Verifique suas permissões e tente novamente.");
+  }finally{
+    el("modalConfirm").disabled = false;
+  }
 }
+
 function renderHistory(){
   const q=el("historySearch").value.trim().toLowerCase();
   const cat=el("historyCategory").value;
@@ -657,7 +720,8 @@ function renderHistory(){
       <td>${h.eta ? formatDate(h.eta) : "-"}</td>
       <td>${categoryLabel(h.categoria)}</td>
       <td class="${h.status==="open"?"action-open":"action-close"}">${gateLabel(h.status)}</td>
-      <td style="text-align:left;white-space:normal;min-width:220px">${escapeHtml(h.notes || "")}</td>`;
+      <td style="text-align:left;white-space:normal;min-width:220px">${escapeHtml(h.notes || "")}</td>
+      <td>${escapeHtml(h.usuarioEmail || "")}</td>`;
     body.appendChild(tr);
   });
   el("historyEmpty").classList.toggle("hidden",rows.length>0);
@@ -717,7 +781,8 @@ function exportHistoryToExcel(){
       "ETA no momento": h.eta ? formatDate(h.eta) : "",
       "Categoria": categoryLabel(h.categoria),
       "Status": gateLabel(h.status),
-      "Observação": h.notes || ""
+      "Observação": h.notes || "",
+      "Usuário": h.usuarioEmail || ""
     }));
 
   const ws = XLSX.utils.json_to_sheet(dados);
@@ -731,7 +796,8 @@ function exportHistoryToExcel(){
     {wch:20},
     {wch:12},
     {wch:12},
-    {wch:45}
+    {wch:45},
+    {wch:30}
   ];
 
   const wb = XLSX.utils.book_new();
@@ -753,30 +819,72 @@ function exportHistoryToExcel(){
 
 el("exportHistoryExcel").addEventListener("click", exportHistoryToExcel);
 
-el("clearHistoryBtn").addEventListener("click",()=>{
+el("clearHistoryBtn").addEventListener("click",async ()=>{
   if(!historyEvents.length){
     alert("O histórico já está vazio.");
     return;
   }
 
-  if(!confirm("Tem certeza que deseja apagar todos os registros do Histórico de Gate? Esta ação não poderá ser desfeita.")) return;
+  if(!confirm("Tem certeza que deseja apagar todos os registros do Histórico de Gate para todos os usuários? Esta ação não poderá ser desfeita.")) return;
 
-  historyEvents = [];
-  saveJSON(STORAGE.history, historyEvents);
-  localStorage.removeItem("controleGradeMock_history_v1");
-  renderHistory();
-  toast("Histórico de Gate apagado.");
+  try{
+    await set(ref(db,"historicoGate"), null);
+    toast("Histórico de Gate apagado para todos os usuários.");
+  }catch(err){
+    console.error(err);
+    alert("Não foi possível limpar o histórico no Firebase.");
+  }
 });
 
 el("clearLocalBtn").addEventListener("click",()=>{
-  if(!confirm("Apagar primeiro ETA local, status dos Gates, histórico e cache do JSON salvos neste navegador?")) return;
+  if(!confirm("Apagar somente o cache local do JSON e primeiro ETA deste navegador? Os Gates e o histórico compartilhados no Firebase não serão apagados.")) return;
   Object.values(STORAGE).forEach(k=>localStorage.removeItem(k));
-  vessels=[];firstEtaMap={};gatesMap={};historyEvents=[];
+  vessels=[];firstEtaMap={};
   fillServiceFilter();render();
-  toast("Dados locais apagados.");
+  toast("Cache local apagado.");
+  loadJsonData(true).catch(console.error);
 });
 
-(function init(){
+
+const loginView = el("loginView");
+const appView = el("appView");
+
+el("loginButton").addEventListener("click", async ()=>{
+  el("loginError").textContent="";
+  try{
+    await signInWithEmailAndPassword(
+      auth,
+      el("loginEmail").value.trim(),
+      el("loginPassword").value
+    );
+  }catch(err){
+    console.error(err);
+    el("loginError").textContent="Não foi possível realizar o login.";
+  }
+});
+
+el("loginPassword").addEventListener("keydown",e=>{
+  if(e.key==="Enter") el("loginButton").click();
+});
+
+el("logoutBtn").addEventListener("click",()=>signOut(auth));
+
+onAuthStateChanged(auth,user=>{
+  if(user){
+    loginView.classList.add("hidden");
+    appView.classList.remove("hidden");
+    el("userEmail").textContent=user.email || "";
+    startSharedListeners();
+    initializeAppView();
+  }else{
+    loginView.classList.remove("hidden");
+    appView.classList.add("hidden");
+    if(unsubscribeGates){unsubscribeGates();unsubscribeGates=null;}
+    if(unsubscribeHistory){unsubscribeHistory();unsubscribeHistory=null;}
+  }
+});
+
+function initializeAppView(){
   vessels=readJSON(STORAGE.lastData,[]);
   vessels=vessels.filter(v=>(v.visit_phase||"").toUpperCase()==="I");
   fillServiceFilter();
@@ -789,10 +897,10 @@ el("clearLocalBtn").addEventListener("click",()=>{
     el("jsonSourceInfo").textContent="Carregando dados...";
   }
 
-  loadJsonData(false).catch(err=>{
-    console.error(err);
-  });
-})();
+  loadJsonData(false).catch(err=>console.error(err));
+}
+
+
 </script>
 </body>
 </html>
