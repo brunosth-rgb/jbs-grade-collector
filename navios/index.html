@@ -315,8 +315,8 @@ tbody tr:hover td.sticky2{background:#f8fafc}
     <textarea id="modalNotes" placeholder="Opcional. Ex.: Gate fechado por restrição de pátio."></textarea>
     <div id="modalStatus" style="margin-top:10px;font-size:12px;color:var(--muted)"></div>
     <div class="modal-actions">
-      <button id="modalCancel" class="btn btn-ghost">Cancelar</button>
-      <button id="modalConfirm" class="btn btn-primary">Confirmar</button>
+      <button id="modalCancel" type="button" class="btn btn-ghost">Cancelar</button>
+      <button id="modalConfirm" type="button" class="btn btn-primary">Confirmar</button>
     </div>
   </div>
 </div>
@@ -645,6 +645,8 @@ function requestGateChange(visit,cat){
   const current=ensureGateState(visit)[cat];
   const next=current==="open"?"closed":"open";
   pendingGateChange={v,cat,next};
+  el("modalConfirm").disabled = false;
+  el("modalConfirm").textContent = "Confirmar";
   el("modalTitle").textContent=next==="open"?"Abrir Gate":"Fechar Gate";
   el("modalText").innerHTML=`Confirmar <strong>${gateLabel(next)}</strong> para <strong>${categoryLabel(cat)}</strong> do navio <strong>${escapeHtml(v.navio)}</strong>, viagem <strong>${escapeHtml(v.viagem)}</strong>?`;
   el("modalConfirm").className="btn "+(next==="open"?"btn-primary":"btn-danger");
@@ -653,16 +655,26 @@ function requestGateChange(visit,cat){
   el("confirmModal").classList.remove("hidden");
 }
 async function confirmGateChange(){
-  if(!pendingGateChange || !auth.currentUser) return;
+  const confirmBtn = el("modalConfirm");
+  const originalText = confirmBtn.textContent;
+
+  if(!pendingGateChange){
+    el("modalStatus").textContent = "Não foi possível identificar a alteração selecionada. Feche a janela e tente novamente.";
+    el("modalStatus").style.color = "var(--red)";
+    return;
+  }
+
+  if(!auth.currentUser){
+    el("modalStatus").textContent = "Sua sessão não está disponível. Saia, entre novamente e tente de novo.";
+    el("modalStatus").style.color = "var(--red)";
+    return;
+  }
 
   const {v,cat,next}=pendingGateChange;
   const notes=el("modalNotes").value.trim();
   const now=new Date().toISOString();
   const key=firebaseKey(v.visit);
   const firebaseCategory = cat === "gate10d" ? "vip" : cat;
-
-  const confirmBtn = el("modalConfirm");
-  const originalText = confirmBtn.textContent;
 
   confirmBtn.disabled = true;
   confirmBtn.textContent = "Salvando...";
@@ -792,7 +804,18 @@ el("modalCancel").addEventListener("click",()=>{
   el("modalStatus").textContent="";
   el("confirmModal").classList.add("hidden");
 });
-el("modalConfirm").addEventListener("click",confirmGateChange);
+document.addEventListener("click", async (event)=>{
+  const button = event.target.closest("#modalConfirm");
+  if(!button) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+
+  el("modalStatus").textContent = "Processando...";
+  el("modalStatus").style.color = "var(--muted)";
+
+  await confirmGateChange();
+}, true);
 el("confirmModal").addEventListener("click",e=>{if(e.target===el("confirmModal")){pendingGateChange=null;el("confirmModal").classList.add("hidden")}});
 
 el("tabNavios").addEventListener("click",()=>{
