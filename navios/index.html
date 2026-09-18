@@ -367,6 +367,7 @@ let firstEtaMap = readJSON(STORAGE.firstEta, {});
 let gatesMap = {};
 let historyEvents = [];
 let pendingGateChange = null;
+let gateSaveInProgress = false;
 let unsubscribeGates = null;
 let unsubscribeHistory = null;
 
@@ -434,6 +435,44 @@ function addDays(value, days){
   if(!d) return null;
   d.setDate(d.getDate()+days);
   return d;
+}
+function firebaseKey(visit){
+  const value = String(visit ?? "").trim();
+  if(!value) throw new Error("Visit da escala não informado.");
+  return value.replace(/[.#$\[\]\/\u0000-\u001f\u007f]/g, "_");
+}
+function showGateError(err){
+  console.error("Erro na confirmação do Gate:", err);
+  const code = String(err?.code || "").toLowerCase();
+  let message = err?.message || "Não foi possível confirmar a alteração.";
+  if(code.includes("permission_denied") || code.includes("permission-denied"))
+    message = "Permissão negada pelo Firebase. Verifique as Rules de controleGate e historicoGate.";
+  else if(code.includes("network"))
+    message = "Falha de comunicação com o Firebase. Verifique a conexão.";
+  const status = el("modalStatus");
+  if(status){ status.textContent = message; status.style.color = "var(--red)"; }
+}
+function startSharedListeners(){
+  if(unsubscribeGates) unsubscribeGates();
+  if(unsubscribeHistory) unsubscribeHistory();
+  unsubscribeGates = onValue(ref(db, "controleGate"), snapshot=>{
+    const shared = {};
+    for(const [key, record] of Object.entries(snapshot.val() || {})){
+      const state = {};
+      for(const cat of ["gateVIP", "reefer", "dry"]){
+        const entry = record[cat] ?? (cat === "gateVIP" ? record.vip ?? record.gate10d : undefined);
+        state[cat] = (typeof entry === "string" ? entry : entry?.status) === "open" ? "open" : "closed";
+      }
+      shared[String(record.visit ?? key)] = state;
+    }
+    gatesMap = shared;
+    render();
+  }, showGateError);
+  unsubscribeHistory = onValue(ref(db, "historicoGate"), snapshot=>{
+    historyEvents = Object.entries(snapshot.val() || {}).map(([id, event])=>({...event, id}))
+      .sort((a,b)=>String(b.timestamp || "").localeCompare(String(a.timestamp || "")));
+    renderHistory();
+  }, showGateError);
 }
 function ensureGateState(visit){
   if(!gatesMap[visit]){
@@ -655,45 +694,40 @@ function requestGateChange(visit,cat){
   el("confirmModal").classList.remove("hidden");
 }
 async function confirmGateChange(){
-  const confirmBtn = el("modalConfirm");
-  const originalText = confirmBtn.textContent;
-
-  if(!pendingGateChange){
-    el("modalStatus").textContent = "Não foi possível identificar a alteração selecionada. Feche a janela e tente novamente.";
-    el("modalStatus").style.color = "var(--red)";
-    return;
-  }
-
-  if(!auth.currentUser){
-    el("modalStatus").textContent = "Sua sessão não está disponível. Saia, entre novamente e tente de novo.";
-    el("modalStatus").style.color = "var(--red)";
-    return;
-  }
-
-  const {v,cat,next}=pendingGateChange;
-  const notes=el("modalNotes").value.trim();
-  const now=new Date().toISOString();
-  const key=firebaseKey(v.visit);
-  const firebaseCategory = cat === "gate10d" ? "vip" : cat;
-
-  confirmBtn.disabled = true;
-  confirmBtn.textContent = "Salvando...";
-  el("modalStatus").textContent = "Salvando alteração no Firebase...";
-  el("modalStatus").style.color = "var(--muted)";
-
+  if(gateSaveInProgress) return;
+  gateSaveInProgress = true;
+  let confirmBtn;
+  let cancelBtn;
+  let notesInput;
   try{
-    /*
-      Grava o status da categoria diretamente no nó correspondente.
-      Esta abordagem evita atualização multi-path relativa no mesmo objeto,
-      que pode apresentar incompatibilidade dependendo da versão/regras.
-    */
+    confirmBtn = el("modalConfirm");
+    cancelBtn = el("modalCancel");
+    notesInput = el("modalNotes");
+    if(!confirmBtn || !notesInput) throw new Error("Controles do modal indisponíveis. Recarregue a página.");
+    confirmBtn.disabled = true;
+    if(cancelBtn) cancelBtn.disabled = true;
+    notesInput.disabled = true;
+    confirmBtn.textContent = "Processando...";
+    if(!pendingGateChange) throw new Error("Alteração não identificada. Feche a janela e selecione o Gate novamente.");
+    const user = auth.currentUser;
+    if(!user) throw new Error("Sua sessão não está disponível. Entre novamente e tente de novo.");
+    const {v,cat,next} = pendingGateChange;
+    if(!v || !["gateVIP","reefer","dry"].includes(cat) || !["open","closed"].includes(next))
+      throw new Error("Dados da alteração de Gate inválidos.");
+    const key = firebaseKey(v.visit);
+    const firebaseCategory = cat;
+    const notes = notesInput.value.trim();
+    const now = new Date().toISOString();
+    confirmBtn.textContent = "Salvando...";
+    el("modalStatus").textContent = "Salvando alteração no Firebase...";
+    el("modalStatus").style.color = "var(--muted)";
     await set(
       ref(db, `controleGate/${key}/${firebaseCategory}`),
       {
         status: next,
         alteradoEm: now,
-        alteradoPor: auth.currentUser.uid,
-        alteradoPorEmail: auth.currentUser.email || ""
+        alteradoPor: user.uid,
+        alteradoPorEmail: user.email || ""
       }
     );
 
@@ -725,31 +759,22 @@ async function confirmGateChange(){
         categoria: cat,
         status: next,
         notes: notes,
-        usuarioUid: auth.currentUser.uid,
-        usuarioEmail: auth.currentUser.email || ""
+        usuarioUid: user.uid,
+        usuarioEmail: user.email || ""
       }
     );
 
-    pendingGateChange=null;
+
+    pendingGateChange = null;
     el("confirmModal").classList.add("hidden");
     toast(`${categoryLabel(cat)} ${gateLabel(next).toLowerCase()} para ${v.navio}.`);
   }catch(err){
-    console.error("Erro ao salvar Gate no Firebase:", err);
-
-    const code = err?.code || "";
-    let msg = "Não foi possível salvar a alteração no Firebase.";
-
-    if(code.includes("PERMISSION_DENIED") || code.includes("permission-denied")){
-      msg = "Permissão negada pelo Firebase. Verifique as Rules de controleGate e historicoGate.";
-    }else if(code.includes("NETWORK") || code.includes("network")){
-      msg = "Falha de comunicação com o Firebase. Verifique a conexão e tente novamente.";
-    }
-
-    el("modalStatus").textContent = msg;
-    el("modalStatus").style.color = "var(--red)";
+    showGateError(err);
   }finally{
-    confirmBtn.disabled = false;
-    confirmBtn.textContent = originalText;
+    gateSaveInProgress = false;
+    if(confirmBtn){confirmBtn.disabled = false; confirmBtn.textContent = "Confirmar";}
+    if(cancelBtn) cancelBtn.disabled = false;
+    if(notesInput) notesInput.disabled = false;
   }
 }
 
@@ -800,23 +825,26 @@ el("resetFilters").addEventListener("click",()=>{
 });
 
 el("modalCancel").addEventListener("click",()=>{
+  if(gateSaveInProgress) return;
   pendingGateChange=null;
   el("modalStatus").textContent="";
   el("confirmModal").classList.add("hidden");
 });
-document.addEventListener("click", async (event)=>{
-  const button = event.target.closest("#modalConfirm");
-  if(!button) return;
-
-  event.preventDefault();
-  event.stopPropagation();
-
-  el("modalStatus").textContent = "Processando...";
-  el("modalStatus").style.color = "var(--muted)";
-
-  await confirmGateChange();
+document.addEventListener("click", async event=>{
+  try{
+    const button = event.target instanceof Element ? event.target.closest("#modalConfirm") : null;
+    if(!button || button.disabled || gateSaveInProgress) return;
+    event.preventDefault();
+    event.stopPropagation();
+    await confirmGateChange();
+  }catch(err){
+    showGateError(err);
+    gateSaveInProgress = false;
+    const button = el("modalConfirm");
+    if(button){button.disabled = false; button.textContent = "Confirmar";}
+  }
 }, true);
-el("confirmModal").addEventListener("click",e=>{if(e.target===el("confirmModal")){pendingGateChange=null;el("confirmModal").classList.add("hidden")}});
+el("confirmModal").addEventListener("click",e=>{if(!gateSaveInProgress && e.target===el("confirmModal")){pendingGateChange=null;el("confirmModal").classList.add("hidden")}});
 
 el("tabNavios").addEventListener("click",()=>{
   el("tabNavios").classList.add("active");el("tabHistorico").classList.remove("active");
