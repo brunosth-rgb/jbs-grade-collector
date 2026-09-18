@@ -313,6 +313,7 @@ tbody tr:hover td.sticky2{background:#f8fafc}
     <p id="modalText"></p>
     <label for="modalNotes" style="display:block;font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:800;margin-top:10px">Observação</label>
     <textarea id="modalNotes" placeholder="Opcional. Ex.: Gate fechado por restrição de pátio."></textarea>
+    <div id="modalStatus" style="margin-top:10px;font-size:12px;color:var(--muted)"></div>
     <div class="modal-actions">
       <button id="modalCancel" class="btn btn-ghost">Cancelar</button>
       <button id="modalConfirm" class="btn btn-primary">Confirmar</button>
@@ -648,6 +649,7 @@ function requestGateChange(visit,cat){
   el("modalText").innerHTML=`Confirmar <strong>${gateLabel(next)}</strong> para <strong>${categoryLabel(cat)}</strong> do navio <strong>${escapeHtml(v.navio)}</strong>, viagem <strong>${escapeHtml(v.viagem)}</strong>?`;
   el("modalConfirm").className="btn "+(next==="open"?"btn-primary":"btn-danger");
   el("modalNotes").value = "";
+  el("modalStatus").textContent = "";
   el("confirmModal").classList.remove("hidden");
 }
 async function confirmGateChange(){
@@ -659,42 +661,83 @@ async function confirmGateChange(){
   const key=firebaseKey(v.visit);
   const firebaseCategory = cat === "gate10d" ? "vip" : cat;
 
-  el("modalConfirm").disabled = true;
+  const confirmBtn = el("modalConfirm");
+  const originalText = confirmBtn.textContent;
+
+  confirmBtn.disabled = true;
+  confirmBtn.textContent = "Salvando...";
+  el("modalStatus").textContent = "Salvando alteração no Firebase...";
+  el("modalStatus").style.color = "var(--muted)";
 
   try{
-    await update(ref(db,`controleGate/${key}`),{
-      visit:v.visit,
-      servico:v.servico,
-      navio:v.navio,
-      viagem:v.viagem,
-      [`${firebaseCategory}/status`]:next,
-      [`${firebaseCategory}/alteradoEm`]:now,
-      [`${firebaseCategory}/alteradoPor`]:auth.currentUser.uid,
-      [`${firebaseCategory}/alteradoPorEmail`]:auth.currentUser.email || ""
-    });
+    /*
+      Grava o status da categoria diretamente no nó correspondente.
+      Esta abordagem evita atualização multi-path relativa no mesmo objeto,
+      que pode apresentar incompatibilidade dependendo da versão/regras.
+    */
+    await set(
+      ref(db, `controleGate/${key}/${firebaseCategory}`),
+      {
+        status: next,
+        alteradoEm: now,
+        alteradoPor: auth.currentUser.uid,
+        alteradoPorEmail: auth.currentUser.email || ""
+      }
+    );
 
-    await push(ref(db,"historicoGate"),{
-      timestamp:now,
-      servico:v.servico,
-      navio:v.navio,
-      viagem:v.viagem,
-      visit:v.visit,
-      eta:v.eta,
-      categoria:cat,
-      status:next,
-      notes:notes,
-      usuarioUid:auth.currentUser.uid,
-      usuarioEmail:auth.currentUser.email || ""
-    });
+    /*
+      Mantém também os dados básicos da escala no nó principal.
+    */
+    await update(
+      ref(db, `controleGate/${key}`),
+      {
+        visit: v.visit,
+        servico: v.servico,
+        navio: v.navio,
+        viagem: v.viagem
+      }
+    );
+
+    /*
+      Cria um evento histórico independente.
+    */
+    await push(
+      ref(db, "historicoGate"),
+      {
+        timestamp: now,
+        servico: v.servico,
+        navio: v.navio,
+        viagem: v.viagem,
+        visit: v.visit,
+        eta: v.eta,
+        categoria: cat,
+        status: next,
+        notes: notes,
+        usuarioUid: auth.currentUser.uid,
+        usuarioEmail: auth.currentUser.email || ""
+      }
+    );
 
     pendingGateChange=null;
     el("confirmModal").classList.add("hidden");
     toast(`${categoryLabel(cat)} ${gateLabel(next).toLowerCase()} para ${v.navio}.`);
   }catch(err){
-    console.error(err);
-    alert("Não foi possível salvar a alteração no Firebase. Verifique suas permissões e tente novamente.");
+    console.error("Erro ao salvar Gate no Firebase:", err);
+
+    const code = err?.code || "";
+    let msg = "Não foi possível salvar a alteração no Firebase.";
+
+    if(code.includes("PERMISSION_DENIED") || code.includes("permission-denied")){
+      msg = "Permissão negada pelo Firebase. Verifique as Rules de controleGate e historicoGate.";
+    }else if(code.includes("NETWORK") || code.includes("network")){
+      msg = "Falha de comunicação com o Firebase. Verifique a conexão e tente novamente.";
+    }
+
+    el("modalStatus").textContent = msg;
+    el("modalStatus").style.color = "var(--red)";
   }finally{
-    el("modalConfirm").disabled = false;
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = originalText;
   }
 }
 
@@ -744,7 +787,11 @@ el("resetFilters").addEventListener("click",()=>{
   el(id).addEventListener(id==="historySearch"?"input":"change",renderHistory);
 });
 
-el("modalCancel").addEventListener("click",()=>{pendingGateChange=null;el("confirmModal").classList.add("hidden")});
+el("modalCancel").addEventListener("click",()=>{
+  pendingGateChange=null;
+  el("modalStatus").textContent="";
+  el("confirmModal").classList.add("hidden");
+});
 el("modalConfirm").addEventListener("click",confirmGateChange);
 el("confirmModal").addEventListener("click",e=>{if(e.target===el("confirmModal")){pendingGateChange=null;el("confirmModal").classList.add("hidden")}});
 
