@@ -264,7 +264,7 @@ tr:hover td:first-child{background:#f8fafc}
   --muted:#a9b7cc;
   --text:#e6edf7;
   --soft:#222d3d;
-  --soft-blue:#232d4c;
+  --soft-blue:#222b4f;
   --ok:#8ce5ac;
   --warn:#ffd17a;
   --danger:#ffa5ad;
@@ -274,71 +274,45 @@ tr:hover td:first-child{background:#f8fafc}
 [data-theme="dark"] .login-box,
 [data-theme="dark"] .card,
 [data-theme="dark"] .section-card,
-[data-theme="dark"] .table-wrap,
-[data-theme="dark"] .nav-tab,
-[data-theme="dark"] input,
-[data-theme="dark"] select{
-  background:var(--card);
-  color:var(--text);
-  border-color:var(--border);
-}
+[data-theme="dark"] .table-wrap{background:var(--card)}
 [data-theme="dark"] .login-box h2,
 [data-theme="dark"] .card-value,
 [data-theme="dark"] .section-title,
 [data-theme="dark"] .summary-value,
-[data-theme="dark"] .slot-main{
-  color:var(--text);
-}
-[data-theme="dark"] .btn-secondary{
-  background:#2a3555;
-  color:#dce5ff;
-}
-[data-theme="dark"] .nav-tab{color:var(--text)}
-[data-theme="dark"] .nav-tab.active,
-[data-theme="dark"] .day-button.active{
-  background:var(--blue);
-  color:#fff;
-  border-color:var(--blue);
-}
-[data-theme="dark"] .day-button{
-  background:var(--card);
-  color:var(--text);
-  border-color:var(--border);
-}
-[data-theme="dark"] .day-button:hover{border-color:#7d8cff}
-[data-theme="dark"] td{
-  background:var(--card);
-  color:var(--text);
-  border-bottom-color:var(--border);
-}
-[data-theme="dark"] td:first-child{background:var(--card)}
+[data-theme="dark"] .slot-main{color:var(--text)}
+[data-theme="dark"] input,
+[data-theme="dark"] select{background:var(--bg);color:var(--text);border-color:var(--border)}
+[data-theme="dark"] input::placeholder{color:#7f8da3}
+[data-theme="dark"] .btn-secondary{background:#2a3555;color:#dce5ff}
+[data-theme="dark"] .nav-tab{background:var(--card);color:var(--text);border-color:var(--border)}
+[data-theme="dark"] .nav-tab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+[data-theme="dark"] .day-button{background:var(--card);color:var(--text);border-color:var(--border)}
+[data-theme="dark"] .day-button.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+[data-theme="dark"] td,
+[data-theme="dark"] td:first-child{background:var(--card);color:var(--text)}
 [data-theme="dark"] tr:hover td,
 [data-theme="dark"] tr:hover td:first-child{background:var(--soft)}
-[data-theme="dark"] .total-cell{
-  background:var(--soft-blue)!important;
-  color:#dce5ff;
-}
+[data-theme="dark"] .total-cell{background:var(--soft-blue)!important;color:#dce5ff}
 [data-theme="dark"] .slot-cell.slot-free{background:#17372a}
 [data-theme="dark"] .slot-cell.slot-free .slot-main,
 [data-theme="dark"] .slot-cell.slot-free .slot-sub{color:#8ce5ac}
 [data-theme="dark"] .slot-cell.slot-full{background:var(--danger-bg)}
 [data-theme="dark"] .slot-cell.slot-full .slot-main,
 [data-theme="dark"] .slot-cell.slot-full .slot-sub{color:var(--danger)}
-[data-theme="dark"] .summary-box{
-  background:var(--soft);
-  border-color:var(--border);
-}
+[data-theme="dark"] .summary-box{background:var(--soft);border-color:var(--border)}
 [data-theme="dark"] .available-recap{border-color:#356c4c}
 [data-theme="dark"] .recap-item{background:#17372a}
 [data-theme="dark"] .recap-item.zero{background:var(--soft)}
 [data-theme="dark"] .recap-item .card-value{color:#8ce5ac}
-[data-theme="dark"] .legend-dot.free{background:#4ade80}
-[data-theme="dark"] .legend-dot.full{background:#fb7185}
-[data-theme="dark"] input::placeholder{color:#8190a6}
-button:focus-visible,input:focus-visible,select:focus-visible{
-  outline:2px solid var(--green);
-  outline-offset:3px;
-}
+[data-theme="dark"] .delta-positive,
+[data-theme="dark"] .history-table td.delta-up{color:#ffd17a}
+[data-theme="dark"] .delta-negative,
+[data-theme="dark"] .history-table td.delta-down{color:#8ce5ac}
+[data-theme="dark"] .delta-neutral,
+[data-theme="dark"] .history-table td.delta-zero{color:var(--muted)}
+[data-theme="dark"] .legend-dot.free{background:#356c4c}
+[data-theme="dark"] .legend-dot.full{background:#79414d}
+[data-theme="dark"] .floating-table-header{background:transparent}
 .theme-toggle{white-space:nowrap}
 
 </style>
@@ -519,27 +493,30 @@ button:focus-visible,input:focus-visible,select:focus-visible{
 
 <script>
 (function(){
-  const buttons = document.querySelectorAll(".theme-toggle");
+  const storageKey = "controleGrade_theme_v2";
 
-  function refreshThemeButtons(){
+  function refreshButtons(){
     const dark = document.documentElement.dataset.theme === "dark";
-    buttons.forEach(button=>{
+    document.querySelectorAll(".theme-toggle").forEach(button=>{
       button.textContent = dark ? "Modo claro" : "Modo escuro";
       button.setAttribute("aria-label", dark ? "Ativar modo claro" : "Ativar modo escuro");
       button.setAttribute("aria-pressed", String(dark));
     });
   }
 
-  buttons.forEach(button=>{
+  function applyTheme(theme){
+    document.documentElement.dataset.theme = theme;
+    try{ localStorage.setItem(storageKey, theme); }catch{}
+    refreshButtons();
+  }
+
+  document.querySelectorAll(".theme-toggle").forEach(button=>{
     button.addEventListener("click", ()=>{
-      const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
-      document.documentElement.dataset.theme = next;
-      try{ localStorage.setItem("controleGrade_theme_v2", next); }catch{}
-      refreshThemeButtons();
+      applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
     });
   });
 
-  refreshThemeButtons();
+  refreshButtons();
 })();
 </script>
 
