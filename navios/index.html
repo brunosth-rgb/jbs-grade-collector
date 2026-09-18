@@ -213,7 +213,7 @@ tbody tr:hover td.sticky2{background:#f8fafc}
     </div>
 
     <div class="info-strip">
-      ETA, deadlines e primeiro ETA vêm do JSON automático. Nesta etapa intermediária, os status dos Gates e o histórico ainda ficam salvos somente neste navegador via localStorage.
+      ETA, deadlines e primeiro ETA vêm do JSON automático. Os status dos Gates e o histórico são compartilhados pelo Firebase entre os usuários autenticados e atualizados em tempo real. Este navegador mantém apenas o cache dos navios e do primeiro ETA.
       <span id="jsonSourceInfo" style="display:block;margin-top:4px"></span>
     </div>
 
@@ -721,49 +721,22 @@ async function confirmGateChange(){
     confirmBtn.textContent = "Salvando...";
     el("modalStatus").textContent = "Salvando alteração no Firebase...";
     el("modalStatus").style.color = "var(--muted)";
-    await set(
-      ref(db, `controleGate/${key}/${firebaseCategory}`),
-      {
-        status: next,
-        alteradoEm: now,
-        alteradoPor: user.uid,
-        alteradoPorEmail: user.email || ""
-      }
-    );
-
-    /*
-      Mantém também os dados básicos da escala no nó principal.
-    */
-    await update(
-      ref(db, `controleGate/${key}`),
-      {
-        visit: v.visit,
-        servico: v.servico,
-        navio: v.navio,
-        viagem: v.viagem
-      }
-    );
-
-    /*
-      Cria um evento histórico independente.
-    */
-    await push(
-      ref(db, "historicoGate"),
-      {
-        timestamp: now,
-        servico: v.servico,
-        navio: v.navio,
-        viagem: v.viagem,
-        visit: v.visit,
-        eta: v.eta,
-        categoria: cat,
-        status: next,
-        notes: notes,
-        usuarioUid: user.uid,
-        usuarioEmail: user.email || ""
-      }
-    );
-
+    const historyRef = push(ref(db, "historicoGate"));
+    if(!historyRef.key) throw new Error("Não foi possível gerar o registro de histórico.");
+    const changes = {};
+    changes[`controleGate/${key}/${firebaseCategory}`] = {
+      status: next, alteradoEm: now,
+      alteradoPor: user.uid, alteradoPorEmail: user.email || ""
+    };
+    for(const field of ["visit", "servico", "navio", "viagem"])
+      changes[`controleGate/${key}/${field}`] = String(v[field] ?? "");
+    changes[`historicoGate/${historyRef.key}`] = {
+      timestamp: now, servico: String(v.servico ?? ""),
+      navio: String(v.navio ?? ""), viagem: String(v.viagem ?? ""),
+      visit: String(v.visit), eta: v.eta ?? "", categoria: cat,
+      status: next, notes, usuarioUid: user.uid, usuarioEmail: user.email || ""
+    };
+    await update(ref(db), changes);
 
     pendingGateChange = null;
     el("confirmModal").classList.add("hidden");
