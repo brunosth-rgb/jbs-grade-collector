@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle de Grade - Mock-up Navios</title>
+<style>
+*{box-sizing:border-box}
+:root{
+  --navy:#14143c;
+  --blue:#232378;
+  --green:#91d700;
+  --green-dark:#166534;
+  --green-soft:#ecfdf5;
+  --red:#b91c1c;
+  --red-soft:#fff1f2;
+  --amber:#b45309;
+  --amber-soft:#fffbeb;
+  --bg:#f4f6f8;
+  --card:#fff;
+  --border:#e5e7eb;
+  --muted:#6b7280;
+  --text:#1f2937;
+  --soft:#f8fafc;
+  --info:#005abe;
+}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+button,input,select{font:inherit}
+button{cursor:pointer}
+.hidden{display:none!important}
+
+header{
+  position:sticky;top:0;z-index:40;background:var(--navy);color:#fff;
+  padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px;
+  box-shadow:0 2px 10px rgba(0,0,0,.13)
+}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-mark{width:34px;height:34px;border-radius:8px;background:var(--green);display:grid;place-items:center;color:var(--navy);font-weight:900}
+.brand h1{font-size:19px;margin:0}
+.brand small{display:block;opacity:.72;margin-top:2px}
+.header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.btn{
+  border:0;border-radius:8px;padding:9px 13px;font-weight:800;
+}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-secondary{background:#fff;color:var(--navy)}
+.btn-ghost{background:#eef0ff;color:var(--blue)}
+.btn-danger{background:#fff1f2;color:var(--red);border:1px solid #fecdd3}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+
+main{max-width:1720px;margin:0 auto;padding:18px 18px 32px}
+.tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.tab{border:1px solid #dfe3e8;background:#fff;color:#374151;padding:9px 16px;border-radius:8px;font-weight:800}
+.tab.active{background:var(--blue);border-color:var(--blue);color:#fff}
+
+.upload-card{
+  background:#fff;border:1px dashed #a5b4fc;border-radius:12px;padding:16px;margin-bottom:14px;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap
+}
+.upload-left{display:flex;align-items:center;gap:12px}
+.upload-icon{width:42px;height:42px;border-radius:10px;background:#eef2ff;display:grid;place-items:center;color:var(--blue);font-size:20px}
+.upload-title{font-weight:900;color:var(--navy)}
+.upload-sub{font-size:12px;color:var(--muted);margin-top:3px}
+.file-input{display:none}
+
+.cards{
+  display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:14px
+}
+.card{background:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.card-label{font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:5px}
+.card-value{font-size:21px;font-weight:900;color:var(--navy)}
+.card-sub{font-size:11px;color:var(--muted);margin-top:4px}
+
+.toolbar{
+  background:#fff;border-radius:10px;padding:12px;display:grid;
+  grid-template-columns:1.4fr .8fr .8fr .8fr auto;gap:10px;align-items:end;margin-bottom:14px;
+  box-shadow:0 2px 8px rgba(0,0,0,.05)
+}
+.field label{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:800;margin-bottom:5px}
+.field input,.field select{
+  width:100%;padding:9px 10px;border:1px solid #d1d5db;border-radius:7px;background:#fff
+}
+
+.table-shell{
+  background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.05);
+  overflow:auto;max-height:calc(100vh - 300px)
+}
+table{border-collapse:separate;border-spacing:0;width:100%;min-width:1680px}
+thead th{
+  position:sticky;top:0;z-index:10;background:var(--blue);color:#fff;
+  padding:10px 8px;font-size:11px;text-align:center;white-space:nowrap;border-right:1px solid rgba(255,255,255,.08)
+}
+tbody td{
+  padding:8px 7px;border-bottom:1px solid var(--border);font-size:12px;text-align:center;background:#fff;white-space:nowrap
+}
+tbody tr:hover td{background:#f8fafc}
+th.sticky,td.sticky{position:sticky;left:0;z-index:12}
+th.sticky{background:var(--blue)}
+td.sticky{background:#fff;text-align:left;font-weight:900;color:var(--navy)}
+tbody tr:hover td.sticky{background:#f8fafc}
+th.sticky2,td.sticky2{position:sticky;left:72px;z-index:11}
+th.sticky2{background:var(--blue)}
+td.sticky2{background:#fff;text-align:left;font-weight:800}
+tbody tr:hover td.sticky2{background:#f8fafc}
+
+.phase-pill,.status-pill,.gate-btn{
+  display:inline-flex;align-items:center;justify-content:center;border-radius:999px;font-weight:900;font-size:10px
+}
+.phase-pill{padding:4px 8px;background:#eef2ff;color:var(--blue)}
+.gate-btn{
+  min-width:76px;border:1px solid transparent;padding:7px 10px;transition:.12s ease
+}
+.gate-btn.closed{background:var(--red-soft);color:var(--red);border-color:#fecdd3}
+.gate-btn.open{background:var(--green-soft);color:var(--green-dark);border-color:#bbf7d0}
+.gate-btn:hover{transform:translateY(-1px)}
+.date-main{font-weight:800;color:#374151}
+.date-sub{font-size:10px;color:var(--muted);margin-top:2px}
+.date-overdue{color:var(--red)!important}
+.date-soon{color:var(--amber)!important}
+
+.empty{padding:42px 18px;text-align:center;color:var(--muted)}
+.empty strong{display:block;color:var(--navy);font-size:16px;margin-bottom:5px}
+
+.history-card{background:#fff;border-radius:10px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.05);margin-bottom:14px}
+.history-grid{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:10px}
+.history-table{min-width:1100px}
+.action-open{color:var(--green-dark);font-weight:900}
+.action-close{color:var(--red);font-weight:900}
+
+.toast{
+  position:fixed;right:18px;bottom:18px;z-index:100;max-width:380px;
+  background:var(--navy);color:#fff;border-radius:10px;padding:12px 14px;
+  box-shadow:0 10px 30px rgba(0,0,0,.2);font-size:13px
+}
+.modal-backdrop{
+  position:fixed;inset:0;background:rgba(15,23,42,.44);z-index:80;display:grid;place-items:center;padding:18px
+}
+.modal{background:#fff;border-radius:12px;padding:18px;width:min(480px,100%);box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.modal h3{margin:0 0 8px;color:var(--navy)}
+.modal p{font-size:13px;color:#4b5563;line-height:1.5}
+.modal textarea{
+  width:100%;min-height:90px;resize:vertical;padding:10px 11px;border:1px solid #d1d5db;
+  border-radius:8px;font:inherit;margin-top:10px
+}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+
+.info-strip{
+  background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;border-radius:9px;padding:10px 12px;
+  font-size:12px;margin-bottom:14px
+}
+
+@media(max-width:1250px){
+  .cards{grid-template-columns:repeat(3,1fr)}
+  .toolbar{grid-template-columns:1fr 1fr 1fr}
+}
+@media(max-width:760px){
+  main{padding:12px}
+  .cards{grid-template-columns:repeat(2,1fr)}
+  .toolbar,.history-grid{grid-template-columns:1fr}
+  header{align-items:flex-start;flex-direction:column}
+  .cards .card{min-width:0}
+}
+@media(max-width:520px){
+  .cards{grid-template-columns:1fr}
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="brand-mark">G</div>
+    <div>
+      <h1>Controle de Grade</h1>
+      <small>Módulo Navios · integração JSON</small>
+    </div>
+  </div>
+  <div class="header-actions">
+    <button id="clearLocalBtn" class="btn btn-danger">Limpar dados locais</button>
+  </div>
+</header>
+
+<main>
+  <div class="tabs">
+    <button id="tabNavios" class="tab active">Navios</button>
+    <button id="tabHistorico" class="tab">Histórico de Gate</button>
+  </div>
+
+  <section id="viewNavios">
+    <div class="upload-card">
+      <div class="upload-left">
+        <div class="upload-icon">↻</div>
+        <div>
+          <div class="upload-title">Dados automáticos de navios</div>
+          <div class="upload-sub">Fonte: data/navios-latest.json publicado pelo Apps Script no GitHub. O carregamento ocorre automaticamente ao abrir a página.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button id="refreshJsonBtn" class="btn btn-primary">Atualizar dados</button>
+      </div>
+    </div>
+
+    <div class="info-strip">
+      ETA, deadlines e primeiro ETA vêm do JSON automático. Nesta etapa intermediária, os status dos Gates e o histórico ainda ficam salvos somente neste navegador via localStorage.
+      <span id="jsonSourceInfo" style="display:block;margin-top:4px"></span>
+    </div>
+
+    <div class="cards">
+      <div class="card"><div class="card-label">Navios inbound</div><div id="countInbound" class="card-value">0</div><div class="card-sub">Visit Phase = I</div></div>
+      <div class="card"><div class="card-label">Gate VIP abertos</div><div id="countVIP" class="card-value">0</div></div>
+      <div class="card"><div class="card-label">Gate Reefer abertos</div><div id="countReefer" class="card-value">0</div></div>
+      <div class="card"><div class="card-label">Gate Dry abertos</div><div id="countDry" class="card-value">0</div></div>
+      <div class="card"><div class="card-label">Próximo ETA</div><div id="nextEta" class="card-value">-</div></div>
+      <div class="card"><div class="card-label">Última atualização JSON</div><div id="lastJsonUpdate" class="card-value" style="font-size:14px">-</div></div>
+    </div>
+
+    <div class="toolbar">
+      <div class="field">
+        <label>Buscar</label>
+        <input id="searchInput" type="search" placeholder="Navio, serviço, viagem ou Visit">
+      </div>
+      <div class="field">
+        <label>Serviço</label>
+        <select id="serviceFilter"><option value="">Todos</option></select>
+      </div>
+      <div class="field">
+        <label>Gate VIP</label>
+        <select id="gate10Filter"><option value="">Todos</option><option value="open">Aberto</option><option value="closed">Fechado</option></select>
+      </div>
+      <div class="field">
+        <label>Gate Reefer / Dry</label>
+        <select id="gateMainFilter"><option value="">Todos</option><option value="any-open">Algum aberto</option><option value="all-closed">Todos fechados</option></select>
+      </div>
+      <button id="resetFilters" class="btn btn-ghost">Limpar filtros</button>
+    </div>
+
+    <div class="table-shell">
+      <table>
+        <thead>
+          <tr>
+            <th class="sticky" style="min-width:72px">Serviço</th>
+            <th class="sticky2" style="min-width:170px">Navio</th>
+            <th>Viagem</th>
+            <th>Visit</th>
+            <th>ETA Atual</th>
+            <th>VIP</th>
+            <th>Reefer</th>
+            <th>Dry</th>
+            <th>7 Dias</th>
+            <th>DDL Reefer</th>
+            <th>DDL Dry</th>
+            <th>Prev. VIP</th>
+            <th>Prev. Reefer</th>
+            <th>Prev. Dry</th>
+          </tr>
+        </thead>
+        <tbody id="vesselBody"></tbody>
+      </table>
+      <div id="emptyState" class="empty">
+        <strong>Nenhum CSV carregado</strong>
+        Selecione o relatório de navios para montar a grade local.
+      </div>
+    </div>
+  </section>
+
+  <section id="viewHistorico" class="hidden">
+    <div class="history-card">
+      <div style="font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:800">Histórico de Gate</div>
+      <div style="font-size:20px;font-weight:900;color:var(--navy);margin-top:3px">Alterações realizadas nesta versão local</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">Cada abertura ou fechamento de Gate gera um evento com data, navio, viagem, ETA do momento, categoria, status e observação.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+        <button id="exportHistoryExcel" class="btn btn-primary">Gerar Excel</button>
+        <button id="clearHistoryBtn" class="btn btn-danger">Limpar histórico</button>
+      </div>
+      <div class="history-grid" style="margin-top:14px">
+        <div class="field"><label>Buscar</label><input id="historySearch" type="search" placeholder="Navio, viagem, Visit"></div>
+        <div class="field"><label>Categoria</label><select id="historyCategory"><option value="">Todas</option><option value="gateVIP">VIP</option><option value="reefer">Reefer</option><option value="dry">Dry</option></select></div>
+        <div class="field"><label>Ação</label><select id="historyAction"><option value="">Todas</option><option value="open">Aberto</option><option value="closed">Fechado</option></select></div>
+      </div>
+    </div>
+
+    <div class="table-shell">
+      <table class="history-table">
+        <thead>
+          <tr><th>Data/Hora</th><th>Serviço</th><th>Navio</th><th>Viagem</th><th>Visit</th><th>ETA no momento</th><th>Categoria</th><th>Status</th><th>Observação</th></tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+      <div id="historyEmpty" class="empty"><strong>Nenhuma alteração registrada</strong>As mudanças de Gate aparecerão aqui.</div>
+    </div>
+  </section>
+</main>
+
+<div id="toast" class="toast hidden"></div>
+
+<div id="confirmModal" class="modal-backdrop hidden">
+  <div class="modal">
+    <h3 id="modalTitle">Confirmar alteração</h3>
+    <p id="modalText"></p>
+    <label for="modalNotes" style="display:block;font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:800;margin-top:10px">Observação</label>
+    <textarea id="modalNotes" placeholder="Opcional. Ex.: Gate fechado por restrição de pátio."></textarea>
+    <div class="modal-actions">
+      <button id="modalCancel" class="btn btn-ghost">Cancelar</button>
+      <button id="modalConfirm" class="btn btn-primary">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE = {
+  firstEta: "controleGradeMock_firstEta_v1",
+  gates: "controleGradeMock_gates_v1",
+  history: "controleGradeMock_history_v2",
+  lastData: "controleGradeMock_lastData_v2",
+  lastJsonMeta: "controleGradeMock_lastJsonMeta_v1"
+};
+
+const NAVIOS_JSON_URL = "data/navios-latest.json";
+
+
+let vessels = [];
+let firstEtaMap = readJSON(STORAGE.firstEta, {});
+let gatesMap = readJSON(STORAGE.gates, {});
+let historyEvents = readJSON(STORAGE.history, []);
+if (!historyEvents.length) {
+  const legacyHistory = readJSON("controleGradeMock_history_v1", []);
+  if (legacyHistory.length) {
+    historyEvents = legacyHistory.map(h => ({...h, eta:h.eta || "", notes:h.notes || ""}));
+    saveJSON(STORAGE.history, historyEvents);
+  }
+}
+let pendingGateChange = null;
+
+const el = id => document.getElementById(id);
+
+function readJSON(key, fallback){
+  try{
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  }catch{return fallback}
+}
+function saveJSON(key,value){localStorage.setItem(key, JSON.stringify(value))}
+function toast(message){
+  el("toast").textContent = message;
+  el("toast").classList.remove("hidden");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>el("toast").classList.add("hidden"),2600);
+}
+function parseCSV(text){
+  const firstLine = (text.split(/\r?\n/,1)[0] || "");
+  const comma = (firstLine.match(/,/g)||[]).length;
+  const semi = (firstLine.match(/;/g)||[]).length;
+  const delimiter = semi > comma ? ";" : ",";
+  const rows = [];
+  let row = [], cell = "", quoted = false;
+  for(let i=0;i<text.length;i++){
+    const c = text[i];
+    if(c === '"'){
+      if(quoted && text[i+1] === '"'){cell += '"'; i++;}
+      else quoted = !quoted;
+    }else if(c === delimiter && !quoted){
+      row.push(cell); cell = "";
+    }else if((c === "\n" || c === "\r") && !quoted){
+      if(c === "\r" && text[i+1] === "\n") i++;
+      row.push(cell); cell = "";
+      if(row.some(v => v.trim() !== "")) rows.push(row);
+      row = [];
+    }else{
+      cell += c;
+    }
+  }
+  row.push(cell);
+  if(row.some(v => v.trim() !== "")) rows.push(row);
+  if(rows.length < 2) return [];
+  const headers = rows[0].map(h=>h.trim().toLowerCase());
+  return rows.slice(1).map(r=>{
+    const o = {};
+    headers.forEach((h,i)=>o[h]=(r[i]||"").trim());
+    return o;
+  });
+}
+function parseDateLocal(value){
+  if(!value) return null;
+  const m = value.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+  if(!m) return null;
+  return new Date(Number(m[1]),Number(m[2])-1,Number(m[3]),Number(m[4]),Number(m[5]),0,0);
+}
+function formatDate(value){
+  const d = value instanceof Date ? value : parseDateLocal(value);
+  if(!d || Number.isNaN(d.getTime())) return "-";
+  return new Intl.DateTimeFormat("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}).format(d);
+}
+function addDays(value, days){
+  const d = parseDateLocal(value);
+  if(!d) return null;
+  d.setDate(d.getDate()+days);
+  return d;
+}
+function ensureGateState(visit){
+  if(!gatesMap[visit]){
+    gatesMap[visit] = {gateVIP:"closed",reefer:"closed",dry:"closed"};
+  }
+  return gatesMap[visit];
+}
+function gateLabel(status){return status === "open" ? "ABERTO" : "FECHADO"}
+function categoryLabel(cat){return ({gateVIP:"VIP",reefer:"Reefer",dry:"Dry"})[cat] || cat}
+
+
+function processPayload(payload){
+  if(!payload || typeof payload !== "object"){
+    throw new Error("JSON inválido.");
+  }
+
+  const naviosObj = payload.navios || {};
+  const rows = Object.values(naviosObj);
+
+  vessels = rows
+    .filter(v => v && v.visit && v.navio && v.eta)
+    .map(v => ({
+      servico: v.servico || "",
+      navio: v.navio || "",
+      visit: v.visit || "",
+      viagem: v.viagem || "",
+      visit_phase: v.visitPhase || "I",
+      eta: v.eta || "",
+      ddl_reefer: v.ddlReefer || "",
+      ddl_dry: v.ddlDry || "",
+      primeiro_eta: v.primeiroEta || v.eta || ""
+    }))
+    .filter(v => (v.visit_phase || "").toUpperCase() === "I")
+    .filter(v => !(v.servico === "POOL" && v.navio === "DUMMY"))
+    .sort((a,b)=>(parseDateLocal(a.eta)?.getTime()||0)-(parseDateLocal(b.eta)?.getTime()||0));
+
+  for(const v of vessels){
+    if(!firstEtaMap[v.visit]) firstEtaMap[v.visit] = v.primeiro_eta || v.eta;
+    ensureGateState(v.visit);
+  }
+
+  saveJSON(STORAGE.firstEta, firstEtaMap);
+  saveJSON(STORAGE.gates, gatesMap);
+  saveJSON(STORAGE.lastData, vessels);
+  saveJSON(STORAGE.lastJsonMeta, {
+    atualizadoEm: payload.atualizadoEm || "",
+    origem: payload.origem || null,
+    quantidadeNavios: payload.quantidadeNavios ?? vessels.length
+  });
+
+  fillServiceFilter();
+  render();
+}
+
+async function loadJsonData(force=false){
+  const btn = el("refreshJsonBtn");
+  const oldText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Atualizando...";
+
+  try{
+    const url = NAVIOS_JSON_URL + (force ? `?t=${Date.now()}` : "");
+    const response = await fetch(url, {cache: force ? "no-store" : "default"});
+
+    if(!response.ok){
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const payload = await response.json();
+    processPayload(payload);
+
+    const meta = readJSON(STORAGE.lastJsonMeta, {});
+    const origemArquivo = meta.origem?.arquivo || "navios-latest.json";
+    el("jsonSourceInfo").textContent =
+      `Arquivo: ${origemArquivo}` +
+      (meta.atualizadoEm ? ` · Atualizado em ${formatIsoDateTime(meta.atualizadoEm)}` : "");
+
+    toast(`${vessels.length} navios carregados do JSON.`);
+  }catch(err){
+    console.error(err);
+
+    const cached = readJSON(STORAGE.lastData, []);
+    if(cached.length){
+      vessels = cached;
+      fillServiceFilter();
+      render();
+
+      const meta = readJSON(STORAGE.lastJsonMeta, {});
+      el("jsonSourceInfo").textContent =
+        "Não foi possível atualizar o JSON. Exibindo a última versão salva neste navegador." +
+        (meta.atualizadoEm ? ` Última atualização: ${formatIsoDateTime(meta.atualizadoEm)}.` : "");
+      toast("Falha ao atualizar JSON. Usando cache local.");
+    }else{
+      el("jsonSourceInfo").textContent =
+        "Não foi possível carregar data/navios-latest.json. Verifique se o Apps Script já publicou o arquivo.";
+      throw err;
+    }
+  }finally{
+    btn.disabled = false;
+    btn.textContent = oldText;
+  }
+}
+
+function formatIsoDateTime(value){
+  if(!value) return "-";
+  const d = new Date(value);
+  if(Number.isNaN(d.getTime())) return value;
+  return new Intl.DateTimeFormat("pt-BR",{
+    dateStyle:"short",
+    timeStyle:"medium"
+  }).format(d);
+}
+
+function fillServiceFilter(){
+  const current = el("serviceFilter").value;
+  const services = [...new Set(vessels.map(v=>v.servico).filter(Boolean))].sort();
+  el("serviceFilter").innerHTML = '<option value="">Todos</option>' + services.map(s=>`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
+  if(services.includes(current)) el("serviceFilter").value=current;
+}
+function escapeHtml(s){
+  return String(s ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+}
+function dateClass(value){
+  const d = value instanceof Date ? value : parseDateLocal(value);
+  if(!d) return "";
+  const diff = d.getTime()-Date.now();
+  if(diff < 0) return "date-overdue";
+  if(diff <= 24*3600*1000) return "date-soon";
+  return "";
+}
+function filters(){
+  return {
+    q:el("searchInput").value.trim().toLowerCase(),
+    service:el("serviceFilter").value,
+    gate10:el("gate10Filter").value,
+    gateMain:el("gateMainFilter").value
+  };
+}
+function filteredVessels(){
+  const f=filters();
+  return vessels.filter(v=>{
+    const g=ensureGateState(v.visit);
+    const hay=[v.navio,v.servico,v.viagem,v.visit].join(" ").toLowerCase();
+    if(f.q && !hay.includes(f.q)) return false;
+    if(f.service && v.servico !== f.service) return false;
+    if(f.gate10 && g.gateVIP !== f.gate10) return false;
+    if(f.gateMain==="any-open" && !(g.reefer==="open" || g.dry==="open")) return false;
+    if(f.gateMain==="all-closed" && !(g.reefer==="closed" && g.dry==="closed")) return false;
+    return true;
+  });
+}
+
+function gateButton(v,cat){
+  const state=ensureGateState(v.visit)[cat];
+  return `<button class="gate-btn ${state}" data-visit="${escapeHtml(v.visit)}" data-cat="${cat}">${gateLabel(state)}</button>`;
+}
+function render(){
+  renderCards();
+  renderTable();
+  renderHistory();
+}
+function renderCards(){
+  const all=vessels;
+  el("countInbound").textContent=all.length.toLocaleString("pt-BR");
+  el("countVIP").textContent=all.filter(v=>ensureGateState(v.visit).gateVIP==="open").length;
+  el("countReefer").textContent=all.filter(v=>ensureGateState(v.visit).reefer==="open").length;
+  el("countDry").textContent=all.filter(v=>ensureGateState(v.visit).dry==="open").length;
+  const next=all.map(v=>({v,d:parseDateLocal(v.eta)})).filter(x=>x.d && x.d>=new Date()).sort((a,b)=>a.d-b.d)[0];
+  el("nextEta").textContent=next?`${next.v.navio}`:"-";
+  el("nextEta").title=next?formatDate(next.d):"";
+  const meta=readJSON(STORAGE.lastJsonMeta,{}); el("lastJsonUpdate").textContent=meta.atualizadoEm?formatIsoDateTime(meta.atualizadoEm):"-";
+}
+function renderTable(){
+  const rows=filteredVessels();
+  const body=el("vesselBody");
+  body.innerHTML="";
+  for(const v of rows){
+    const first=v.primeiro_eta || firstEtaMap[v.visit] || v.eta;
+    const prev10=addDays(v.eta,-10);
+    const seven=addDays(v.eta,-7);
+    const tr=document.createElement("tr");
+    tr.innerHTML=`
+      <td class="sticky">${escapeHtml(v.servico)}</td>
+      <td class="sticky2">${escapeHtml(v.navio)}</td>
+      <td>${escapeHtml(v.viagem)}</td>
+      <td>${escapeHtml(v.visit)}</td>
+      <td><div class="date-main">${formatDate(v.eta)}</div></td>
+      <td>${gateButton(v,"gateVIP")}</td>
+      <td>${gateButton(v,"reefer")}</td>
+      <td>${gateButton(v,"dry")}</td>
+      <td><div class="date-main ${dateClass(seven)}">${formatDate(seven)}</div></td>
+      <td><div class="date-main ${dateClass(v.ddl_reefer)}">${formatDate(v.ddl_reefer)}</div></td>
+      <td><div class="date-main ${dateClass(v.ddl_dry)}">${formatDate(v.ddl_dry)}</div></td>
+      <td><div class="date-main ${dateClass(prev10)}">${formatDate(prev10)}</div></td>
+      <td><div class="date-main">${formatDate(first)}</div><div class="date-sub">1º ETA</div></td>
+      <td><div class="date-main">${formatDate(first)}</div><div class="date-sub">1º ETA</div></td>`;
+    body.appendChild(tr);
+  }
+  el("emptyState").classList.toggle("hidden", rows.length>0);
+  if(vessels.length && !rows.length){
+    el("emptyState").innerHTML="<strong>Nenhum navio encontrado</strong>Ajuste os filtros para visualizar os registros.";
+  }else if(!vessels.length){
+    el("emptyState").innerHTML="<strong>Nenhum CSV carregado</strong>Selecione o relatório de navios para montar a grade local.";
+  }
+  body.querySelectorAll(".gate-btn").forEach(btn=>btn.addEventListener("click",()=>requestGateChange(btn.dataset.visit,btn.dataset.cat)));
+}
+function requestGateChange(visit,cat){
+  const v=vessels.find(x=>x.visit===visit);
+  if(!v) return;
+  const current=ensureGateState(visit)[cat];
+  const next=current==="open"?"closed":"open";
+  pendingGateChange={v,cat,next};
+  el("modalTitle").textContent=next==="open"?"Abrir Gate":"Fechar Gate";
+  el("modalText").innerHTML=`Confirmar <strong>${gateLabel(next)}</strong> para <strong>${categoryLabel(cat)}</strong> do navio <strong>${escapeHtml(v.navio)}</strong>, viagem <strong>${escapeHtml(v.viagem)}</strong>?`;
+  el("modalConfirm").className="btn "+(next==="open"?"btn-primary":"btn-danger");
+  el("modalNotes").value = "";
+  el("confirmModal").classList.remove("hidden");
+}
+function confirmGateChange(){
+  if(!pendingGateChange) return;
+  const {v,cat,next}=pendingGateChange;
+  ensureGateState(v.visit)[cat]=next;
+  saveJSON(STORAGE.gates,gatesMap);
+  historyEvents.unshift({
+    timestamp:new Date().toISOString(),
+    servico:v.servico,
+    navio:v.navio,
+    viagem:v.viagem,
+    visit:v.visit,
+    eta:v.eta,
+    categoria:cat,
+    status:next,
+    notes:el("modalNotes").value.trim()
+  });
+  saveJSON(STORAGE.history,historyEvents);
+  pendingGateChange=null;
+  el("confirmModal").classList.add("hidden");
+  render();
+  toast(`${categoryLabel(cat)} ${gateLabel(next).toLowerCase()} para ${v.navio}.`);
+}
+function renderHistory(){
+  const q=el("historySearch").value.trim().toLowerCase();
+  const cat=el("historyCategory").value;
+  const action=el("historyAction").value;
+  const rows=historyEvents.filter(h=>{
+    const hay=[h.navio,h.viagem,h.visit,h.servico].join(" ").toLowerCase();
+    return (!q||hay.includes(q)) && (!cat||h.categoria===cat) && (!action||h.status===action);
+  });
+  const body=el("historyBody");
+  body.innerHTML="";
+  rows.forEach(h=>{
+    const tr=document.createElement("tr");
+    const dt=new Date(h.timestamp);
+    tr.innerHTML=`
+      <td>${new Intl.DateTimeFormat("pt-BR",{dateStyle:"short",timeStyle:"medium"}).format(dt)}</td>
+      <td>${escapeHtml(h.servico)}</td>
+      <td>${escapeHtml(h.navio)}</td>
+      <td>${escapeHtml(h.viagem)}</td>
+      <td>${escapeHtml(h.visit)}</td>
+      <td>${h.eta ? formatDate(h.eta) : "-"}</td>
+      <td>${categoryLabel(h.categoria)}</td>
+      <td class="${h.status==="open"?"action-open":"action-close"}">${gateLabel(h.status)}</td>
+      <td style="text-align:left;white-space:normal;min-width:220px">${escapeHtml(h.notes || "")}</td>`;
+    body.appendChild(tr);
+  });
+  el("historyEmpty").classList.toggle("hidden",rows.length>0);
+}
+
+el("refreshJsonBtn").addEventListener("click",()=>loadJsonData(true));
+
+["searchInput","serviceFilter","gate10Filter","gateMainFilter"].forEach(id=>{
+  el(id).addEventListener(id==="searchInput"?"input":"change",renderTable);
+});
+el("resetFilters").addEventListener("click",()=>{
+  el("searchInput").value="";
+  el("serviceFilter").value="";
+  el("gate10Filter").value="";
+  el("gateMainFilter").value="";
+  renderTable();
+});
+
+["historySearch","historyCategory","historyAction"].forEach(id=>{
+  el(id).addEventListener(id==="historySearch"?"input":"change",renderHistory);
+});
+
+el("modalCancel").addEventListener("click",()=>{pendingGateChange=null;el("confirmModal").classList.add("hidden")});
+el("modalConfirm").addEventListener("click",confirmGateChange);
+el("confirmModal").addEventListener("click",e=>{if(e.target===el("confirmModal")){pendingGateChange=null;el("confirmModal").classList.add("hidden")}});
+
+el("tabNavios").addEventListener("click",()=>{
+  el("tabNavios").classList.add("active");el("tabHistorico").classList.remove("active");
+  el("viewNavios").classList.remove("hidden");el("viewHistorico").classList.add("hidden");
+});
+el("tabHistorico").addEventListener("click",()=>{
+  el("tabHistorico").classList.add("active");el("tabNavios").classList.remove("active");
+  el("viewHistorico").classList.remove("hidden");el("viewNavios").classList.add("hidden");
+  renderHistory();
+});
+
+
+function exportHistoryToExcel(){
+  if(!historyEvents.length){
+    alert("Não há registros no histórico para exportar.");
+    return;
+  }
+
+  if(typeof XLSX === "undefined"){
+    alert("Não foi possível carregar o componente de Excel. Verifique sua conexão com a internet e tente novamente.");
+    return;
+  }
+
+  const dados = [...historyEvents]
+    .sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp))
+    .map(h=>({
+      "Data/Hora": new Intl.DateTimeFormat("pt-BR",{dateStyle:"short",timeStyle:"medium"}).format(new Date(h.timestamp)),
+      "Serviço": h.servico || "",
+      "Navio": h.navio || "",
+      "Viagem": h.viagem || "",
+      "Visit": h.visit || "",
+      "ETA no momento": h.eta ? formatDate(h.eta) : "",
+      "Categoria": categoryLabel(h.categoria),
+      "Status": gateLabel(h.status),
+      "Observação": h.notes || ""
+    }));
+
+  const ws = XLSX.utils.json_to_sheet(dados);
+
+  ws["!cols"] = [
+    {wch:20},
+    {wch:12},
+    {wch:28},
+    {wch:16},
+    {wch:22},
+    {wch:20},
+    {wch:12},
+    {wch:12},
+    {wch:45}
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Histórico de Gate");
+
+  const agora = new Date();
+  const stamp = [
+    agora.getFullYear(),
+    String(agora.getMonth()+1).padStart(2,"0"),
+    String(agora.getDate()).padStart(2,"0"),
+    "_",
+    String(agora.getHours()).padStart(2,"0"),
+    String(agora.getMinutes()).padStart(2,"0")
+  ].join("");
+
+  XLSX.writeFile(wb, `historico_gate_${stamp}.xlsx`);
+  toast("Planilha Excel gerada.");
+}
+
+el("exportHistoryExcel").addEventListener("click", exportHistoryToExcel);
+
+el("clearHistoryBtn").addEventListener("click",()=>{
+  if(!historyEvents.length){
+    alert("O histórico já está vazio.");
+    return;
+  }
+
+  if(!confirm("Tem certeza que deseja apagar todos os registros do Histórico de Gate? Esta ação não poderá ser desfeita.")) return;
+
+  historyEvents = [];
+  saveJSON(STORAGE.history, historyEvents);
+  localStorage.removeItem("controleGradeMock_history_v1");
+  renderHistory();
+  toast("Histórico de Gate apagado.");
+});
+
+el("clearLocalBtn").addEventListener("click",()=>{
+  if(!confirm("Apagar primeiro ETA local, status dos Gates, histórico e cache do JSON salvos neste navegador?")) return;
+  Object.values(STORAGE).forEach(k=>localStorage.removeItem(k));
+  vessels=[];firstEtaMap={};gatesMap={};historyEvents=[];
+  fillServiceFilter();render();
+  toast("Dados locais apagados.");
+});
+
+(function init(){
+  vessels=readJSON(STORAGE.lastData,[]);
+  vessels=vessels.filter(v=>(v.visit_phase||"").toUpperCase()==="I");
+  fillServiceFilter();
+  render();
+
+  const meta=readJSON(STORAGE.lastJsonMeta,{});
+  if(meta.atualizadoEm){
+    el("jsonSourceInfo").textContent=`Última versão em cache: ${formatIsoDateTime(meta.atualizadoEm)}. Atualizando...`;
+  }else{
+    el("jsonSourceInfo").textContent="Carregando dados...";
+  }
+
+  loadJsonData(false).catch(err=>{
+    console.error(err);
+  });
+})();
+</script>
+</body>
+</html>
