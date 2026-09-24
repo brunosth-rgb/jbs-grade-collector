@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Controle de Grade - Navios v29</title>
+<title>Controle de Grade - Navios v30</title>
 <script>
 try{document.documentElement.dataset.theme=localStorage.getItem("controleGrade_theme_v1")==="light"?"light":"dark";}catch{document.documentElement.dataset.theme="dark";}
 </script>
@@ -116,6 +116,11 @@ tbody tr:hover td.sticky2{background:#f8fafc}
 .gate-btn.closed{background:var(--red-soft);color:var(--red);border-color:#fecdd3}
 .gate-btn.open{background:var(--green-soft);color:var(--green-dark);border-color:#bbf7d0}
 .gate-btn:hover{transform:translateY(-1px)}
+.gate-cell{display:flex;flex-direction:column;align-items:center;gap:4px}
+.gate-deadline{font-size:10px;font-weight:800;color:var(--muted);line-height:1.15}
+.gate-deadline.soon{color:var(--amber)}
+.gate-deadline.overdue{color:var(--red)}
+.gate-deadline.today{color:var(--amber)}
 .date-main{font-weight:800;color:#374151}
 .date-sub{font-size:10px;color:var(--muted);margin-top:2px}
 .date-overdue{color:var(--red)!important}
@@ -196,6 +201,10 @@ tbody tr:hover td.sticky2{background:#f8fafc}
 [data-theme="dark"] .btn-danger{background:var(--red-soft);color:var(--red);border-color:#79414d}
 [data-theme="dark"] .gate-btn.closed{border-color:#79414d}
 [data-theme="dark"] .gate-btn.open{border-color:#356c4c}
+[data-theme="dark"] .gate-deadline{color:var(--muted)}
+[data-theme="dark"] .gate-deadline.soon,
+[data-theme="dark"] .gate-deadline.today{color:var(--amber)}
+[data-theme="dark"] .gate-deadline.overdue{color:var(--red)}
 [data-theme="dark"] .info-strip{background:#1b2b45;border-color:#3a547d;color:#c2d9ff}
 [data-theme="dark"] .upload-card{border-color:#596895}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #91d700;outline-offset:3px}
@@ -253,7 +262,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 
     <div class="info-strip">
       ETA, deadlines e primeiro ETA vêm do JSON automático. Os status dos Gates e o histórico são compartilhados pelo Firebase entre os usuários autenticados e atualizados em tempo real. Este navegador mantém apenas o cache dos navios e do primeiro ETA.
-      <span id="sharedSyncInfo" role="status" style="display:block;margin-top:6px">v28: aguardando login e leitura do Firebase...</span>
+      <span id="sharedSyncInfo" role="status" style="display:block;margin-top:6px">v30: aguardando login e leitura do Firebase...</span>
       <span id="jsonSourceInfo" style="display:block;margin-top:4px"></span>
     </div>
 
@@ -498,6 +507,53 @@ function addDays(value, days){
   d.setDate(d.getDate()+days);
   return d;
 }
+
+function todayBrazilParts(){
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA",{
+      timeZone:"America/Sao_Paulo",
+      year:"numeric",
+      month:"2-digit",
+      day:"2-digit"
+    }).formatToParts(new Date())
+      .filter(p=>p.type!=="literal")
+      .map(p=>[p.type,p.value])
+  );
+  return {
+    year:Number(parts.year),
+    month:Number(parts.month),
+    day:Number(parts.day)
+  };
+}
+function daysUntilDryDeadline(value){
+  if(!value) return null;
+  const m=String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(!m) return null;
+
+  const today=todayBrazilParts();
+  const currentUtc=Date.UTC(today.year,today.month-1,today.day);
+  const ddlUtc=Date.UTC(Number(m[1]),Number(m[2])-1,Number(m[3]));
+
+  return Math.round((ddlUtc-currentUtc)/(24*60*60*1000));
+}
+function deadlineDaysText(value){
+  const days=daysUntilDryDeadline(value);
+  if(days===null) return "DDL não informado";
+  if(days<0){
+    const elapsed=Math.abs(days);
+    return `DDL vencido há ${elapsed} ${elapsed===1?"dia":"dias"}`;
+  }
+  if(days===0) return "DDL hoje";
+  return `${days} ${days===1?"dia":"dias"} p/ DDL`;
+}
+function deadlineDaysClass(value){
+  const days=daysUntilDryDeadline(value);
+  if(days===null) return "";
+  if(days<0) return "overdue";
+  if(days===0) return "today";
+  if(days<=2) return "soon";
+  return "";
+}
 function firebaseKey(visit){
   const value = String(visit ?? "").trim();
   if(!value) throw new Error("Visit da escala não informado.");
@@ -517,7 +573,7 @@ function showGateError(err){
 function renderSharedSync(){
   const target = el("sharedSyncInfo");
   if(!target) return;
-  target.textContent = `v28 · Firebase: ${sharedSync.connection} · Gates: ${sharedSync.gates} · Histórico: ${sharedSync.history}`;
+  target.textContent = `v30 · Firebase: ${sharedSync.connection} · Gates: ${sharedSync.gates} · Histórico: ${sharedSync.history}`;
   target.style.color = [sharedSync.gates, sharedSync.history].some(x=>x.startsWith("ERRO")) ? "var(--red)" : "var(--muted)";
 }
 function sharedReadError(section, err){
@@ -711,7 +767,10 @@ function filteredVessels(){
 
 function gateButton(v,cat){
   const state=ensureGateState(v.visit)[cat];
-  return `<button class="gate-btn ${state}" data-visit="${escapeHtml(v.visit)}" data-cat="${cat}">${gateLabel(state)}</button>`;
+  return `<div class="gate-cell">
+    <button class="gate-btn ${state}" data-visit="${escapeHtml(v.visit)}" data-cat="${cat}">${gateLabel(state)}</button>
+    <div class="gate-deadline ${deadlineDaysClass(v.ddl_dry)}">${escapeHtml(deadlineDaysText(v.ddl_dry))}</div>
+  </div>`;
 }
 function render(){
   renderCards();
