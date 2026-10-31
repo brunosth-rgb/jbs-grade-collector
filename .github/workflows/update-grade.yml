@@ -27,17 +27,11 @@ jobs:
       - name: Instalar Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Criar credencial Firebase
-        env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: |
-          mkdir -p credentials
-          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > credentials/firebase-service-account.json
-
       - name: Executar coletor
         env:
           PORTAL_USER: ${{ secrets.PORTAL_USER }}
           PORTAL_PASSWORD: ${{ secrets.PORTAL_PASSWORD }}
-          FIREBASE_DATABASE_URL: ${{ secrets.FIREBASE_DATABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           HEADLESS: "true"
         run: node collector.js
