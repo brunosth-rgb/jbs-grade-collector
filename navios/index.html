@@ -162,17 +162,21 @@ body{caret-color:var(--color-focus)}
 .bar{background:var(--color-bar);color:var(--color-bar-ink)}
 .bar-inner{
   max-width:var(--container);margin:0 auto;padding:0 var(--gutter);min-height:60px;
-  display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:var(--space-lg)
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:var(--space-lg)
 }
 .brand{display:flex;align-items:center;gap:var(--space-sm);min-width:0}
 .brand-mark{
   flex-shrink:0;width:32px;height:32px;border-radius:var(--radius-control);
   background:var(--color-signal);color:var(--color-signal-ink);display:grid;place-items:center;font-weight:700
 }
+.brand-logo{display:block;flex-shrink:0;height:36px;width:auto}
+.brand-text{padding-left:var(--space-sm);border-left:1px solid var(--color-bar-rule);min-width:0}
 .brand h1{font-size:var(--text-lg);color:var(--color-bar-ink)}
 .brand small{display:block;font-size:var(--text-xs);color:var(--color-bar-muted)}
 .tabs{display:flex;gap:var(--space-2xs);align-self:stretch;overflow-x:auto;scrollbar-width:none}
+.tablist{display:contents}
 .tab{
+  display:inline-flex;align-items:center;text-decoration:none;
   border:0;background:transparent;color:var(--color-bar-muted);padding:0 var(--space-md);
   font-size:var(--text-sm);font-weight:600;white-space:nowrap;box-shadow:inset 0 -2px 0 transparent;
   transition:color var(--dur-micro) var(--ease-out),background-color var(--dur-micro) var(--ease-out),box-shadow var(--dur-micro) var(--ease-out)
@@ -369,15 +373,18 @@ td.notes{white-space:normal;min-width:240px;max-width:420px}
 <header class="bar">
   <div class="bar-inner">
     <div class="brand">
-      <div class="brand-mark" aria-hidden="true">G</div>
-      <div>
+      <img class="brand-logo" src="logos/jbs-terminais.svg" alt="JBS Terminais" width="63" height="36">
+      <div class="brand-text">
         <h1>Controle de Grade</h1>
         <small>Módulo Navios, integração JSON</small>
       </div>
     </div>
-    <nav class="tabs" role="tablist" aria-label="Seções">
-      <button id="tabNavios" type="button" class="tab active" role="tab" aria-selected="true" aria-controls="viewNavios">Navios</button>
-      <button id="tabHistorico" type="button" class="tab" role="tab" aria-selected="false" aria-controls="viewHistorico">Histórico de Gate</button>
+    <nav class="tabs" aria-label="Seções">
+      <div class="tablist" role="tablist">
+        <button id="tabNavios" type="button" class="tab active" role="tab" aria-selected="true" aria-controls="viewNavios">Navios</button>
+        <button id="tabHistorico" type="button" class="tab" role="tab" aria-selected="false" aria-controls="viewHistorico">Histórico de Gate</button>
+      </div>
+      <a class="tab" href="https://brunosth-rgb.github.io/jbs-grade-collector/" target="_blank" rel="noopener" aria-label="Grades de Agendamento (abre em nova aba)">Grades de Agendamento</a>
     </nav>
     <div class="header-actions">
       <span id="userEmail" class="user"></span>
