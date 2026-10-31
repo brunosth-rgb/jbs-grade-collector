@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Controle de Grade, consulta de navios: status dos Gates VIP, Reefer e Dry e prazos de cada escala, somente leitura, para o time de atendimento.">
 <title>Controle de Grade - Consulta de Navios</title>
 <script>
 try{
@@ -13,297 +14,747 @@ try{
 }
 </script>
 <style>
-*{box-sizing:border-box}
+/* Hallmark · shape: app screen · genre: modern-minimal · theme: brand · redesign: full
+ * paper: oklch(97.5% 0.006 278) · accent: oklch(36% 0.15 276) · display: system-ui · body: system-ui
+ * nav: kept top bar, read-only twin of the Controle de Grade screen · signature: the gate grid, grouped under Gates, Prazos and Previsão · states: loading, empty, filtered-empty, error, full
+ * axes: light/grotesk-sans/chromatic-indigo · posture: restrained · contrast: pass · v2.0.0 */
+/* Hallmark · pre-emit critique: P4 H4 E4 S4 R5 V3 · weakest: V, by design it mirrors the internal screen so the two teams read the same grid; every control that writes is gone */
+
 :root{
-  --navy:#14143c;--blue:#232378;--green:#91d700;
-  --green-dark:#166534;--green-soft:#ecfdf5;
-  --red:#b91c1c;--red-soft:#fff1f2;
-  --amber:#b45309;--bg:#f4f6f8;--card:#fff;
-  --border:#e5e7eb;--muted:#6b7280;--text:#1f2937;--soft:#f8fafc;
+  color-scheme:light;
+  --space-3xs:2px;--space-2xs:4px;--space-xs:8px;--space-sm:12px;--space-md:16px;--space-lg:24px;--space-xl:40px;--space-2xl:64px;
+  --text-xs:0.75rem;--text-sm:0.875rem;--text-md:1rem;--text-lg:1.125rem;--text-xl:1.35rem;--text-2xl:1.6rem;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+  --dur-micro:120ms;
+  --z-raised:10;--z-toast:500;
+  --container:1720px;--gutter:24px;
+  --radius-panel:8px;--radius-control:6px;--radius-pill:999px;
+  --col-service:88px;--head-row:36px;
+
+  --font-body:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",sans-serif;
+  --font-display:"Segoe UI Variable Display","Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",sans-serif;
+
+  --color-paper:oklch(97.5% 0.006 278);
+  --color-paper-2:oklch(95% 0.01 278);
+  --color-surface:oklch(99.3% 0.003 278);
+  --color-ink:oklch(22% 0.05 278);
+  --color-ink-2:oklch(36% 0.04 278);
+  --color-muted:oklch(47% 0.03 278);
+  --color-rule:oklch(89.5% 0.014 278);
+  --color-rule-strong:oklch(80% 0.02 278);
+  --color-accent:oklch(36% 0.15 276);
+  --color-accent-hover:oklch(31% 0.15 276);
+  --color-accent-ink:oklch(98% 0.008 278);
+  --color-focus:oklch(45% 0.2 276);
+
+  --color-bar:oklch(21% 0.075 278);
+  --color-bar-ink:oklch(96% 0.01 278);
+  --color-bar-muted:oklch(78% 0.03 278);
+  --color-bar-rule:oklch(36% 0.07 278);
+  --color-bar-hover:oklch(27% 0.08 278);
+  --color-signal:oklch(80% 0.2 128);
+
+  --color-open:oklch(92% 0.1 128);
+  --color-open-ink:oklch(36% 0.1 135);
+  --color-open-rule:oklch(78% 0.16 128);
+  --color-error:oklch(50% 0.19 27);
+  --color-warn:oklch(58% 0.17 50);
+  --color-ok:oklch(47% 0.13 145);
+
+  --color-logo-chip:oklch(98.5% 0.004 278);
+  --shadow-pop:0 12px 32px oklch(20% 0.04 278 / 0.18);
 }
-body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
-button,input,select{font:inherit}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --color-paper:oklch(16% 0.02 278);
+  --color-paper-2:oklch(20% 0.024 278);
+  --color-surface:oklch(18% 0.022 278);
+  --color-ink:oklch(94% 0.012 278);
+  --color-ink-2:oklch(83% 0.02 278);
+  --color-muted:oklch(71% 0.03 278);
+  --color-rule:oklch(28% 0.03 278);
+  --color-rule-strong:oklch(38% 0.035 278);
+  --color-accent:oklch(82% 0.2 128);
+  --color-accent-hover:oklch(87% 0.19 128);
+  --color-accent-ink:oklch(20% 0.06 278);
+  --color-focus:oklch(84% 0.2 128);
+
+  --color-bar:oklch(21% 0.07 278);
+  --color-bar-rule:oklch(32% 0.06 278);
+
+  --color-open:oklch(33% 0.08 130);
+  --color-open-ink:oklch(89% 0.17 128);
+  --color-open-rule:oklch(48% 0.12 130);
+  --color-error:oklch(75% 0.13 22);
+  --color-warn:oklch(77% 0.16 58);
+  --color-ok:oklch(82% 0.16 138);
+
+  --color-logo-chip:oklch(94% 0.008 278);
+  --shadow-pop:0 12px 32px oklch(5% 0.02 278 / 0.5);
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html,body{overflow-x:clip}
+html{scrollbar-color:var(--color-rule-strong) var(--color-paper)}
+body{margin:0;background:var(--color-paper);color:var(--color-ink);font-family:var(--font-body);font-size:var(--text-md);line-height:1.5;-webkit-font-smoothing:antialiased;caret-color:var(--color-focus)}
+::selection{background:color-mix(in oklab,var(--color-focus) 24%,transparent)}
+button,input,select{font:inherit;color:inherit}
 button{cursor:pointer}
-.hidden{display:none!important}
-header{
-  position:sticky;top:0;z-index:40;background:var(--navy);color:#fff;
-  padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px;
-  box-shadow:0 2px 10px rgba(0,0,0,.13)
+h1,h2{margin:0;font-family:var(--font-display);font-weight:600;letter-spacing:-0.01em;line-height:1.15;text-wrap:balance;overflow-wrap:break-word;min-width:0}
+p{margin:0;text-wrap:pretty}
+.hidden,[hidden]{display:none!important}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+:focus-visible{outline:2px solid var(--color-focus);outline-offset:2px}
+
+/* Controls */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:var(--space-xs);
+  min-height:36px;padding:0 var(--space-md);border:1px solid transparent;border-radius:var(--radius-control);
+  background:transparent;color:var(--color-ink);font-size:var(--text-sm);font-weight:600;line-height:1;white-space:nowrap;
+  transition:background-color var(--dur-micro) var(--ease-out),border-color var(--dur-micro) var(--ease-out),color var(--dur-micro) var(--ease-out),transform var(--dur-micro) var(--ease-out)
 }
-.brand{display:flex;align-items:center;gap:12px}
-.brand-mark{width:34px;height:34px;border-radius:8px;background:var(--green);display:grid;place-items:center;color:var(--navy);font-weight:900}
-.brand h1{font-size:19px;margin:0}.brand small{display:block;opacity:.72;margin-top:2px}
-.header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.btn{border:0;border-radius:8px;padding:9px 13px;font-weight:800}
-.btn-primary{background:var(--blue);color:#fff}.btn-secondary{background:#fff;color:var(--navy)}.btn-ghost{background:#eef0ff;color:var(--blue)}
-.btn:disabled{opacity:.55;cursor:not-allowed}
-main{max-width:1720px;margin:0 auto;padding:18px 18px 32px}
-.upload-card{
-  background:#fff;border:1px dashed #a5b4fc;border-radius:12px;padding:16px;margin-bottom:14px;
-  display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible{outline:2px solid var(--color-focus);outline-offset:2px}
+.btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.btn-primary{background:var(--color-accent);color:var(--color-accent-ink)}
+.btn-primary:hover:not(:disabled){background:var(--color-accent-hover)}
+.btn-secondary,.btn-ghost{border-color:var(--color-rule-strong)}
+.btn-secondary:hover:not(:disabled),.btn-ghost:hover:not(:disabled){background:var(--color-paper-2)}
+@media (pointer:coarse){.btn{min-height:44px}}
+
+.field{display:flex;flex-direction:column;gap:var(--space-2xs);min-width:0}
+.field label{font-size:var(--text-sm);color:var(--color-muted)}
+.field input,.field select{
+  width:100%;min-height:36px;padding:0 var(--space-sm);border:1px solid var(--color-rule-strong);border-radius:var(--radius-control);
+  background:var(--color-surface);color:var(--color-ink);font-size:var(--text-sm);
+  transition:border-color var(--dur-micro) var(--ease-out)
 }
-.upload-left{display:flex;align-items:center;gap:12px}.upload-icon{width:42px;height:42px;border-radius:10px;background:#eef2ff;display:grid;place-items:center;color:var(--blue);font-size:20px}
-.upload-title{font-weight:900;color:var(--navy)}.upload-sub{font-size:12px;color:var(--muted);margin-top:3px}
-.info-strip{background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;border-radius:9px;padding:10px 12px;font-size:12px;margin-bottom:14px}
-.cards{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:14px}
-.card{background:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
-.card-label{font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:5px}.card-value{font-size:21px;font-weight:900;color:var(--navy)}.card-sub{font-size:11px;color:var(--muted);margin-top:4px}
-.toolbar{background:#fff;border-radius:10px;padding:12px;display:grid;grid-template-columns:1.5fr .8fr .8fr .8fr auto;gap:10px;align-items:end;margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
-.field label{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:800;margin-bottom:5px}
-.field input,.field select{width:100%;padding:9px 10px;border:1px solid #d1d5db;border-radius:7px;background:#fff}
-.table-shell{background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.05);overflow:auto;max-height:calc(100vh - 300px)}
-table{border-collapse:separate;border-spacing:0;width:100%;min-width:1680px}
-thead th{position:sticky;top:0;z-index:10;background:var(--blue);color:#fff;padding:10px 8px;font-size:11px;text-align:center;white-space:nowrap;border-right:1px solid rgba(255,255,255,.08)}
-tbody td{padding:8px 7px;border-bottom:1px solid var(--border);font-size:12px;text-align:center;background:#fff;white-space:nowrap}
-tbody tr:hover td{background:#f8fafc}
-th.sticky,td.sticky{position:sticky;left:0;z-index:12}th.sticky{background:var(--blue)}
-td.sticky{background:#fff;text-align:left;font-weight:900;color:var(--navy)}tbody tr:hover td.sticky{background:#f8fafc}
-th.sticky2,td.sticky2{position:sticky;left:72px;z-index:11}th.sticky2{background:var(--blue)}
-td.sticky2{background:#fff;text-align:left;font-weight:800}tbody tr:hover td.sticky2{background:#f8fafc}
-.gate-pill{display:inline-flex;align-items:center;justify-content:center;min-width:76px;border-radius:999px;font-weight:900;font-size:10px;padding:7px 10px;border:1px solid transparent}
-.gate-pill.closed{background:var(--red-soft);color:var(--red);border-color:#fecdd3}
-.gate-pill.open{background:var(--green-soft);color:var(--green-dark);border-color:#bbf7d0}
-.date-main{font-weight:800;color:#374151}.date-sub{font-size:10px;color:var(--muted);margin-top:2px}
-.date-overdue{color:var(--red)!important}.date-soon{color:var(--amber)!important}
-.empty{padding:42px 18px;text-align:center;color:var(--muted)}.empty strong{display:block;color:var(--navy);font-size:16px;margin-bottom:5px}
-.toast{position:fixed;right:18px;bottom:18px;z-index:100;max-width:380px;background:var(--navy);color:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.2);font-size:13px}
-:root{color-scheme:light}
-:root[data-theme="dark"]{color-scheme:dark;--bg:#10151f;--card:#1a2230;--soft:#222d3d;--border:#354258;--text:#e6edf7;--muted:#a9b7cc;--blue:#343f9c;--green-dark:#8ce5ac;--green-soft:#17372a;--red:#ffa5ad;--red-soft:#40232d;--amber:#ffd17a}
-[data-theme="dark"] .card,[data-theme="dark"] .toolbar,[data-theme="dark"] .table-shell,[data-theme="dark"] .upload-card{background:var(--card)!important}
-[data-theme="dark"] tbody td,[data-theme="dark"] td.sticky,[data-theme="dark"] td.sticky2{background:var(--card)}
-[data-theme="dark"] tbody tr:hover td{background:var(--soft)}
-[data-theme="dark"] .card-value,[data-theme="dark"] .upload-title,[data-theme="dark"] .empty strong,[data-theme="dark"] td.sticky,[data-theme="dark"] .date-main{color:var(--text)}
-[data-theme="dark"] input,[data-theme="dark"] select{background:var(--bg);color:var(--text);border-color:var(--border)}
-[data-theme="dark"] .btn-secondary,[data-theme="dark"] .btn-ghost,[data-theme="dark"] .upload-icon{background:#2a3555;color:#dce5ff}
-[data-theme="dark"] .info-strip{background:#1b2b45;border-color:#3a547d;color:#c2d9ff}
-[data-theme="dark"] .upload-card{border-color:#596895}
-@media(max-width:1250px){.cards{grid-template-columns:repeat(3,1fr)}.toolbar{grid-template-columns:1fr 1fr 1fr}}
-@media(max-width:760px){main{padding:12px}.cards{grid-template-columns:repeat(2,1fr)}.toolbar{grid-template-columns:1fr}header{align-items:flex-start;flex-direction:column}}
-@media(max-width:520px){.cards{grid-template-columns:1fr}}
+.field input:hover,.field select:hover{border-color:var(--color-muted)}
+.field input:focus-visible,.field select:focus-visible{outline:2px solid var(--color-focus);outline-offset:-1px}
+.field input:disabled,.field select:disabled{opacity:.55;cursor:not-allowed}
+.field input::placeholder{color:var(--color-muted)}
+
+/* Top bar */
+.bar{background:var(--color-bar);color:var(--color-bar-ink)}
+.bar-inner{
+  max-width:var(--container);margin:0 auto;padding:0 var(--gutter);min-height:60px;
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:var(--space-lg)
+}
+.brand{display:flex;align-items:center;gap:var(--space-sm);min-width:0}
+.brand-logo{display:block;flex-shrink:0;height:36px;width:auto}
+.brand-text{padding-left:var(--space-sm);border-left:1px solid var(--color-bar-rule);min-width:0}
+.brand h1{font-size:var(--text-lg);color:var(--color-bar-ink)}
+.brand small{display:block;font-size:var(--text-xs);color:var(--color-bar-muted)}
+.tabs{display:flex;gap:var(--space-2xs);align-self:stretch;overflow-x:auto;scrollbar-width:none}
+.tab{
+  display:inline-flex;align-items:center;text-decoration:none;
+  border:0;background:transparent;color:var(--color-bar-muted);padding:0 var(--space-md);
+  font-size:var(--text-sm);font-weight:600;white-space:nowrap;box-shadow:inset 0 -2px 0 transparent;
+  transition:color var(--dur-micro) var(--ease-out),background-color var(--dur-micro) var(--ease-out),box-shadow var(--dur-micro) var(--ease-out)
+}
+a.tab:hover{color:var(--color-bar-ink);background:var(--color-bar-hover)}
+a.tab:active{background:var(--color-bar-rule)}
+.tab:focus-visible{outline:2px solid var(--color-signal);outline-offset:-4px}
+.tab.active{color:var(--color-bar-ink);box-shadow:inset 0 -2px 0 var(--color-signal)}
+.header-actions{display:flex;align-items:center;gap:var(--space-xs);min-width:0}
+.bar .btn{color:var(--color-bar-ink);border-color:var(--color-bar-rule)}
+.bar .btn:hover{background:var(--color-bar-hover)}
+.bar .btn:focus-visible{outline-color:var(--color-signal)}
+
+/* Page */
+main{max-width:var(--container);margin:0 auto;padding:var(--space-lg) var(--gutter) var(--space-xl);display:flex;flex-direction:column;gap:var(--space-lg)}
+
+.figures{margin:0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr))}
+.figures>div{padding:0 var(--space-lg);border-left:1px solid var(--color-rule);min-width:0}
+.figures>div:first-child{padding-left:0;border-left:0}
+.figures>div:last-child{padding-right:0}
+.figures dt{font-size:var(--text-sm);color:var(--color-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.figures dd{margin:0}
+.figure{font-size:var(--text-2xl);font-weight:600;line-height:1.2;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.figure-text{font-size:var(--text-lg);line-height:1.6}
+.figure-sub{font-size:var(--text-xs);color:var(--color-muted);font-variant-numeric:tabular-nums}
+
+.source{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-md);padding-top:var(--space-md);border-top:1px solid var(--color-rule)}
+.source-text{display:flex;flex-direction:column;gap:var(--space-2xs);min-width:0;font-size:var(--text-sm)}
+.source-text strong{font-weight:600}
+.source-status{color:var(--color-muted)}
+.sync{display:flex;flex-wrap:wrap;column-gap:var(--space-md);row-gap:var(--space-3xs);color:var(--color-muted)}
+.sync.is-error{color:var(--color-error)}
+.source details{color:var(--color-muted);max-width:90ch}
+.source summary{cursor:pointer;width:fit-content;color:var(--color-ink-2);border-radius:var(--radius-control)}
+.source summary:hover{color:var(--color-ink)}
+.source details p{margin-top:var(--space-xs)}
+.source-actions{display:flex;gap:var(--space-xs);flex-shrink:0}
+
+.panel{background:var(--color-surface);color:var(--color-ink);border:1px solid var(--color-rule);border-radius:var(--radius-panel);overflow:hidden}
+.toolbar{
+  display:grid;grid-template-columns:minmax(0,1.6fr) repeat(3,minmax(0,1fr)) auto;gap:var(--space-sm);align-items:end;
+  padding:var(--space-md);border-bottom:1px solid var(--color-rule);background:var(--color-paper-2)
+}
+
+.table-shell{overflow:auto;max-height:calc(100dvh - 320px);min-height:280px;background:var(--color-surface)}
+table{border-collapse:separate;border-spacing:0;width:100%;min-width:1320px;font-size:var(--text-sm);font-variant-numeric:tabular-nums}
+thead th{
+  position:sticky;top:0;z-index:var(--z-raised);height:var(--head-row);padding:0 var(--space-xs);
+  background:var(--color-paper-2);color:var(--color-ink-2);font-weight:600;text-align:left;white-space:nowrap;
+  border-bottom:1px solid var(--color-rule)
+}
+thead tr.sub th{top:var(--head-row)}
+thead th.group{text-align:center;color:var(--color-muted);font-weight:400;border-bottom:1px solid var(--color-rule)}
+thead th.group+th.group,thead th.edge,tbody td.edge{border-left:1px solid var(--color-rule)}
+tbody td{padding:var(--space-xs);border-bottom:1px solid var(--color-rule);background:var(--color-surface);white-space:nowrap;vertical-align:middle;transition:background-color var(--dur-micro) var(--ease-out)}
+tbody tr:last-child td{border-bottom:0}
+thead tr:first-child th:first-child,tbody td:first-child{padding-left:var(--space-md)}
+thead tr:first-child th:last-child,thead tr.sub th:last-child,tbody td:last-child{padding-right:var(--space-md)}
+tbody tr:hover td{background:var(--color-paper-2)}
+th.sticky,td.sticky{position:sticky;left:0;z-index:calc(var(--z-raised) + 2);min-width:var(--col-service)}
+th.sticky2,td.sticky2{position:sticky;left:var(--col-service);z-index:calc(var(--z-raised) + 1);min-width:180px;box-shadow:1px 0 0 var(--color-rule)}
+thead th.sticky,thead th.sticky2{z-index:calc(var(--z-raised) + 3)}
+td.sticky{color:var(--color-muted)}
+td.sticky2{font-weight:600}
+.vessel{display:inline-flex;align-items:center;gap:var(--space-xs);min-height:28px}
+.carrier-chip{
+  flex-shrink:0;display:inline-flex;align-items:center;height:22px;padding:var(--space-3xs) var(--space-2xs);
+  background:var(--color-logo-chip);border-radius:var(--space-2xs)
+}
+.carrier-logo{display:block;height:16px;width:auto;max-width:56px;object-fit:contain}
+.carrier-badge{
+  flex-shrink:0;padding:0 var(--space-2xs);border:1px solid var(--color-rule-strong);border-radius:var(--space-2xs);
+  color:var(--color-ink-2);font-size:var(--text-xs);font-weight:600;line-height:1.5
+}
+td.gate{text-align:center;padding-inline:var(--space-xs)}
+
+/* Somente leitura: o status é um rótulo, não um botão. */
+.gate-pill{
+  display:inline-flex;align-items:center;justify-content:center;min-width:76px;min-height:30px;padding:0 var(--space-sm);
+  border:1px solid var(--color-rule-strong);border-radius:var(--radius-pill);color:var(--color-muted);
+  font-size:var(--text-xs);font-weight:600
+}
+.gate-pill.open{background:var(--color-open);border-color:var(--color-open-rule);color:var(--color-open-ink)}
+
+.date-main{color:var(--color-ink)}
+.date-sub,.gate-deadline{font-size:var(--text-xs);color:var(--color-muted);margin-top:var(--space-3xs)}
+.gate-deadline.today,.date-today{color:var(--color-warn)!important}
+.gate-deadline.today{font-weight:600}
+.date-ok{color:var(--color-ok)!important}
+.date-late{color:var(--color-error)!important}
+
+.empty{padding:var(--space-2xl) var(--space-md);text-align:center;color:var(--color-muted);font-size:var(--text-sm)}
+.empty strong{display:block;color:var(--color-ink);font-size:var(--text-md);font-weight:600;margin-bottom:var(--space-2xs)}
+
+.toast{
+  position:fixed;right:var(--space-md);bottom:var(--space-md);z-index:var(--z-toast);max-width:380px;
+  background:var(--color-bar);color:var(--color-bar-ink);border-radius:var(--radius-panel);padding:var(--space-sm) var(--space-md);
+  box-shadow:var(--shadow-pop);font-size:var(--text-sm)
+}
+
+@media (max-width:75rem){
+  .figures{grid-template-columns:repeat(3,minmax(0,1fr));row-gap:var(--space-md)}
+  .figures>div:nth-child(4){padding-left:0;border-left:0}
+  .toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .toolbar>.field:first-child{grid-column:1 / -1}
+  .toolbar>.btn{justify-self:start}
+}
+@media (max-width:60rem){
+  :root{--gutter:16px}
+  .bar-inner{grid-template-columns:minmax(0,1fr) auto;row-gap:0;padding-top:var(--space-xs)}
+  .tabs{grid-column:1 / -1;grid-row:2;min-height:44px}
+  .tab{padding:0 var(--space-sm)}
+  .source{flex-direction:column}
+}
+@media (max-width:40rem){
+  .figures{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .figures>div{padding:0 var(--space-md)}
+  .figures>div:nth-child(4){padding-left:var(--space-md);border-left:1px solid var(--color-rule)}
+  .figures>div:nth-child(odd){padding-left:0;border-left:0}
+  .toolbar{grid-template-columns:minmax(0,1fr)}
+  .field input,.field select{font-size:var(--text-md);min-height:40px}
+  :root{--col-service:64px}
+  th.sticky2,td.sticky2{min-width:140px}
+  .table-shell{max-height:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition-duration:0.01ms!important;animation-duration:0.01ms!important}
+}
 </style>
 </head>
 <body>
-<header>
-  <div class="brand">
-    <div class="brand-mark">G</div>
-    <div><h1>Controle de Grade</h1><small>Consulta pública de Navios · somente leitura</small></div>
-  </div>
-  <div class="header-actions">
-    <button id="themeToggle" class="btn btn-secondary">Modo claro</button>
+<header class="bar">
+  <div class="bar-inner">
+    <div class="brand">
+      <img class="brand-logo" src="../logos/jbs-terminais.svg" alt="JBS Terminais" width="63" height="36">
+      <div class="brand-text">
+        <h1>Controle de Grade</h1>
+        <small>Consulta de Navios, somente leitura</small>
+      </div>
+    </div>
+    <nav class="tabs" aria-label="Seções">
+      <span class="tab active" aria-current="page">Navios</span>
+      <a class="tab" href="https://brunosth-rgb.github.io/jbs-grade-collector/" target="_blank" rel="noopener" aria-label="Grades de Agendamento (abre em nova aba)">Grades de Agendamento</a>
+    </nav>
+    <div class="header-actions">
+      <button id="themeToggle" type="button" class="btn btn-secondary">Modo claro</button>
+    </div>
   </div>
 </header>
 
 <main>
-  <div class="upload-card">
-    <div class="upload-left">
-      <div class="upload-icon">↻</div>
-      <div>
-        <div class="upload-title">Consulta automática de navios e Gates</div>
-        <div class="upload-sub">Dados públicos de navios e status dos Gates. Esta página não possui permissão de alteração.</div>
-      </div>
+  <h2 class="visually-hidden">Navios</h2>
+
+  <dl class="figures">
+    <div><dt>Navios inbound</dt><dd id="countInbound" class="figure">0</dd><dd class="figure-sub">Visit Phase = I</dd></div>
+    <div><dt>Gate VIP abertos</dt><dd id="countVIP" class="figure">0</dd></div>
+    <div><dt>Gate Reefer abertos</dt><dd id="countReefer" class="figure">0</dd></div>
+    <div><dt>Gate Dry abertos</dt><dd id="countDry" class="figure">0</dd></div>
+    <div><dt>Próximo ETA</dt><dd id="nextEta" class="figure figure-text">-</dd><dd id="nextEtaDate" class="figure-sub"></dd></div>
+    <div><dt>Última atualização</dt><dd id="lastUpdate" class="figure figure-text">-</dd></div>
+  </dl>
+
+  <div class="source">
+    <div class="source-text">
+      <strong>Consulta automática de navios e Gates</strong>
+      <span id="sourceInfo" class="source-status">Carregando dados…</span>
+      <span id="syncInfo" class="sync" role="status"></span>
+      <details>
+        <summary>Sobre esta página</summary>
+        <p>Dados públicos de navios e status dos Gates. Esta página não possui permissão de alteração.</p>
+        <p>Somente consulta. Nenhuma informação desta página é gravada no Supabase ou no GitHub. Os Gates, a previsão e os armadores são atualizados em tempo real a partir do Controle de Grade.</p>
+      </details>
     </div>
-    <button id="refreshJsonBtn" class="btn btn-primary">Atualizar dados</button>
+    <div class="source-actions">
+      <button id="refreshJsonBtn" type="button" class="btn btn-primary">Atualizar dados</button>
+    </div>
   </div>
 
-  <div class="info-strip">
-    Somente consulta. Nenhuma informação desta página é gravada no Firebase ou no GitHub.
-    <span id="sourceInfo" style="display:block;margin-top:4px"></span>
-  </div>
+  <div class="panel">
+    <div class="toolbar">
+      <div class="field"><label for="searchInput">Buscar</label><input id="searchInput" type="search" placeholder="Navio, serviço, viagem, Visit ou armador"></div>
+      <div class="field"><label for="serviceFilter">Serviço</label><select id="serviceFilter"><option value="">Todos</option></select></div>
+      <div class="field"><label for="vipFilter">Gate VIP</label><select id="vipFilter"><option value="">Todos</option><option value="open">Aberto</option><option value="closed">Fechado</option></select></div>
+      <div class="field"><label for="mainGateFilter">Gate Reefer / Dry</label><select id="mainGateFilter"><option value="">Todos</option><option value="any-open">Algum aberto</option><option value="all-closed">Todos fechados</option></select></div>
+      <button id="resetFilters" type="button" class="btn btn-ghost">Limpar filtros</button>
+    </div>
 
-  <div class="cards">
-    <div class="card"><div class="card-label">Navios inbound</div><div id="countInbound" class="card-value">0</div><div class="card-sub">Visit Phase = I</div></div>
-    <div class="card"><div class="card-label">Gate VIP abertos</div><div id="countVIP" class="card-value">0</div></div>
-    <div class="card"><div class="card-label">Gate Reefer abertos</div><div id="countReefer" class="card-value">0</div></div>
-    <div class="card"><div class="card-label">Gate Dry abertos</div><div id="countDry" class="card-value">0</div></div>
-    <div class="card"><div class="card-label">Próximo ETA</div><div id="nextEta" class="card-value">-</div></div>
-    <div class="card"><div class="card-label">Última atualização</div><div id="lastUpdate" class="card-value" style="font-size:14px">-</div></div>
-  </div>
-
-  <div class="toolbar">
-    <div class="field"><label>Buscar</label><input id="searchInput" type="search" placeholder="Navio, serviço, viagem ou Visit"></div>
-    <div class="field"><label>Serviço</label><select id="serviceFilter"><option value="">Todos</option></select></div>
-    <div class="field"><label>Gate VIP</label><select id="vipFilter"><option value="">Todos</option><option value="open">Aberto</option><option value="closed">Fechado</option></select></div>
-    <div class="field"><label>Gate Reefer / Dry</label><select id="mainGateFilter"><option value="">Todos</option><option value="any-open">Algum aberto</option><option value="all-closed">Todos fechados</option></select></div>
-    <button id="resetFilters" class="btn btn-ghost">Limpar filtros</button>
-  </div>
-
-  <div class="table-shell">
-    <table>
-      <thead>
-        <tr>
-          <th class="sticky" style="min-width:72px">Serviço</th>
-          <th class="sticky2" style="min-width:170px">Navio</th>
-          <th>Viagem</th>
-          <th>Visit</th>
-          <th>ETA Atual</th>
-          <th>VIP</th>
-          <th>Reefer</th>
-          <th>Dry</th>
-          <th>7 Dias</th>
-          <th>DDL Reefer</th>
-          <th>DDL Dry</th>
-          <th>Prev. VIP</th>
-          <th>Prev. Reefer</th>
-          <th>Prev. Dry</th>
-        </tr>
-      </thead>
-      <tbody id="vesselBody"></tbody>
-    </table>
-    <div id="emptyState" class="empty"><strong>Carregando dados</strong>Aguarde alguns instantes.</div>
+    <div class="table-shell">
+      <table>
+        <thead>
+          <tr>
+            <th class="sticky" rowspan="2">Serviço</th>
+            <th class="sticky2" rowspan="2">Navio</th>
+            <th rowspan="2">Viagem</th>
+            <th rowspan="2">Visit</th>
+            <th rowspan="2">ETA atual</th>
+            <th class="group edge" colspan="3">Gates</th>
+            <th class="group" colspan="3">Prazos</th>
+            <th class="group" colspan="3">Previsão (Baseado no 1º ETA)</th>
+          </tr>
+          <tr class="sub">
+            <th class="edge">VIP</th>
+            <th>Reefer</th>
+            <th>Dry</th>
+            <th class="edge">7 dias</th>
+            <th>DDL Reefer</th>
+            <th>DDL Dry</th>
+            <th class="edge" id="prevVipHead">VIP −11 d</th>
+            <th id="prevReeferHead">Reefer −6 d</th>
+            <th id="prevDryHead">Dry −4 d</th>
+          </tr>
+        </thead>
+        <tbody id="vesselBody"></tbody>
+      </table>
+      <div id="emptyState" class="empty"><strong>Carregando dados</strong>Aguarde alguns instantes.</div>
+    </div>
   </div>
 </main>
 
-<div id="toast" class="toast hidden"></div>
+<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
 <script>
-const NAVIOS_JSON_URL="https://brunosth-rgb.github.io/jbs-grade-collector/navios/data/navios-latest.json";
-const GATES_JSON_URL="https://brunosth-rgb.github.io/jbs-grade-collector/navios/data/gates-public.json";
+(function(){
+  const button=document.getElementById("themeToggle");
+  function refresh(){
+    const dark=document.documentElement.dataset.theme==="dark";
+    button.textContent=dark?"Modo claro":"Modo escuro";
+    button.setAttribute("aria-label",dark?"Ativar modo claro":"Ativar modo escuro");
+    button.setAttribute("aria-pressed",String(dark));
+  }
+  button.addEventListener("click",()=>{
+    const theme=document.documentElement.dataset.theme==="dark"?"light":"dark";
+    document.documentElement.dataset.theme=theme;
+    try{localStorage.setItem("controleGrade_public_theme_v1",theme);}catch{}
+    refresh();
+  });
+  refresh();
+})();
+</script>
+<script type="module">
+// Somente leitura: esta página nunca grava. Usa a mesma chave "anon" do Controle de Grade;
+// as políticas do supabase/schema.sql liberam para ela só a leitura de Gates, previsão e armadores.
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm";
+const SUPABASE_URL = "https://SEU-PROJETO.supabase.co";
+const SUPABASE_ANON_KEY = "COLE_AQUI_A_ANON_KEY";
+const NAVIOS_JSON_URL = "https://brunosth-rgb.github.io/jbs-grade-collector/navios/data/navios-latest.json";
+// Pasta dos logos, relativa a esta página (atendimento/ fica ao lado de logos/).
+const LOGO_BASE = "../logos/";
 
-let vessels=[];
-let gates={};
-let naviosUpdated="";
-let gatesUpdated="";
+const backendConfigured = !SUPABASE_URL.includes("SEU-PROJETO") && !SUPABASE_ANON_KEY.startsWith("COLE_AQUI");
+const supabase = backendConfigured
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{persistSession:false, autoRefreshToken:false}})
+  : null;
 
-const el=id=>document.getElementById(id);
+const PREVISAO_DEFAULT = {vip:11, reefer:6, dry:4};
+const ARMADORES = [
+  {nome:"CMA CGM", logo:"cma-cgm.svg", apelidos:["CMA"]},
+  {nome:"COSCO", logo:"cosco.svg", apelidos:["COSCO SHIPPING"]},
+  {nome:"EVERGREEN", logo:"evergreen.svg", apelidos:["EMC"]},
+  {nome:"HAPAG-LLOYD", logo:"hapag-lloyd.svg", apelidos:["HAPAG", "HLC"]},
+  {nome:"HMM", logo:"hmm.svg", apelidos:["HYUNDAI"]},
+  {nome:"K LINE", logo:"kline.svg", apelidos:["KLINE"]},
+  {nome:"MAERSK", logo:"maersk.svg", apelidos:["MAERSK LINE", "MSK"]},
+  {nome:"MOL", logo:"mol.svg", apelidos:[]},
+  {nome:"MSC", logo:"msc.svg", apelidos:["MEDITERRANEAN SHIPPING COMPANY", "MEDITERRANEAN SHIPPING"]},
+  {nome:"ONE", logo:"one.svg", apelidos:["OCEAN NETWORK EXPRESS"]},
+  {nome:"OOCL", logo:"oocl.svg", apelidos:[]},
+  {nome:"ZIM", logo:"zim.svg", apelidos:[]}
+];
+function normArmador(nome){return String(nome ?? "").toUpperCase().replace(/[\s\-_.]+/g," ").trim()}
+const ARMADOR_LOGOS = Object.fromEntries(ARMADORES.flatMap(a=>[a.nome, ...a.apelidos].map(n=>[normArmador(n), LOGO_BASE + a.logo])));
+
+let vessels = [];
+let gatesMap = {};
+let armadoresMap = {};
+let previsaoCfg = {...PREVISAO_DEFAULT};
+let naviosUpdated = "";
+let sharedUpdated = "";
+const sync = {conexao:"conectando", gates:"carregando", previsao:"carregando", armadores:"carregando"};
+
+const el = id => document.getElementById(id);
 
 function toast(message){
-  el("toast").textContent=message;el("toast").classList.remove("hidden");
-  clearTimeout(toast._t);toast._t=setTimeout(()=>el("toast").classList.add("hidden"),2400);
+  el("toast").textContent = message;
+  el("toast").classList.remove("hidden");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>el("toast").classList.add("hidden"), 2400);
+}
+function escapeHtml(s){
+  return String(s ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 }
 function parseDateLocal(value){
-  if(!value)return null;
-  const m=String(value).match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
-  if(!m)return null;
+  if(!value) return null;
+  const m = String(value).match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+  if(!m) return null;
   return new Date(Number(m[1]),Number(m[2])-1,Number(m[3]),Number(m[4]),Number(m[5]),0,0);
 }
 function formatDate(value){
-  const d=value instanceof Date?value:parseDateLocal(value);
-  if(!d||Number.isNaN(d.getTime()))return "-";
+  const d = value instanceof Date ? value : parseDateLocal(value);
+  if(!d || Number.isNaN(d.getTime())) return "-";
   return new Intl.DateTimeFormat("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}).format(d);
 }
+function formatDateShort(value){
+  const d = value instanceof Date ? value : parseDateLocal(value);
+  if(!d || Number.isNaN(d.getTime())) return "-";
+  return new Intl.DateTimeFormat("pt-BR",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}).format(d);
+}
 function formatIso(value){
-  if(!value)return "-";
-  const d=new Date(value);
-  if(Number.isNaN(d.getTime()))return value;
+  if(!value) return "-";
+  const d = new Date(value);
+  if(Number.isNaN(d.getTime())) return value;
   return new Intl.DateTimeFormat("pt-BR",{dateStyle:"short",timeStyle:"medium"}).format(d);
 }
-function addDays(value,days){const d=parseDateLocal(value);if(!d)return null;d.setDate(d.getDate()+days);return d;}
-function escapeHtml(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));}
-function dateClass(value){
-  const d=value instanceof Date?value:parseDateLocal(value);if(!d)return "";
-  const diff=d.getTime()-Date.now();if(diff<0)return"date-overdue";if(diff<=24*3600*1000)return"date-soon";return"";
+function addDays(value, days){
+  const d = parseDateLocal(value);
+  if(!d) return null;
+  d.setDate(d.getDate()+days);
+  return d;
 }
-function gateState(visit,cat){return gates[visit]?.[cat]==="open"?"open":"closed";}
-function gatePill(visit,cat){const state=gateState(visit,cat);return `<span class="gate-pill ${state}">${state==="open"?"ABERTO":"FECHADO"}</span>`;}
+function todayBrazilParts(){
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA",{timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"})
+      .formatToParts(new Date()).filter(p=>p.type!=="literal").map(p=>[p.type,p.value])
+  );
+  return {year:Number(parts.year), month:Number(parts.month), day:Number(parts.day)};
+}
+function daysUntil(value){
+  if(!value) return null;
+  const m = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(!m) return null;
+  const t = todayBrazilParts();
+  return Math.round((Date.UTC(Number(m[1]),Number(m[2])-1,Number(m[3])) - Date.UTC(t.year,t.month-1,t.day)) / 86400000);
+}
+function deadlineDaysText(value){
+  const days = daysUntil(value);
+  if(days===null) return "DDL não informado";
+  if(days<0){ const n = Math.abs(days); return `DDL vencido há ${n} ${n===1?"dia":"dias"}`; }
+  if(days===0) return "DDL hoje";
+  return `${days} ${days===1?"dia":"dias"} p/ DDL`;
+}
+function deadlineDaysClass(value){return daysUntil(value)===0 ? "today" : ""}
 
-async function loadData(force=false){
-  const btn=el("refreshJsonBtn");const old=btn.textContent;btn.disabled=true;btn.textContent="Atualizando...";
+// Mesmas regras do Controle de Grade.
+// Reefer fecha no DDL Reefer, Dry no DDL Dry, VIP no maior dos dois.
+function gateDeadline(v,cat){
+  const reefer = parseDateLocal(v.ddl_reefer);
+  const dry = parseDateLocal(v.ddl_dry);
+  if(cat === "reefer") return reefer;
+  if(cat === "dry") return dry;
+  if(reefer && dry) return reefer > dry ? reefer : dry;
+  return reefer || dry;
+}
+function gateDeadlinePassed(v,cat){
+  const d = gateDeadline(v,cat);
+  return !!d && d.getTime() <= Date.now();
+}
+// Um Gate com deadline vencido aparece fechado, mesmo antes de o Controle de Grade gravar o fechamento automático.
+function gateState(v,cat){
+  return gatesMap[v.visit]?.[cat] === "open" && !gateDeadlinePassed(v,cat) ? "open" : "closed";
+}
+// Escala some da grade quando os dois DDLs ficaram antes de hoje.
+function vesselExpired(v){
+  const reefer = daysUntil(v.ddl_reefer);
+  const dry = daysUntil(v.ddl_dry);
+  return reefer !== null && dry !== null && reefer < 0 && dry < 0;
+}
+function activeVessels(){return vessels.filter(v=>!vesselExpired(v))}
+function normalizePrevisao(raw){
+  const out = {...PREVISAO_DEFAULT};
+  for(const k of Object.keys(PREVISAO_DEFAULT)){
+    const n = Number(raw?.[k]);
+    if(Number.isInteger(n) && n >= 0 && n <= 60) out[k] = n;
+  }
+  return out;
+}
+// Prazos: cor padrão; laranja só quando a data é hoje (horário de Brasília).
+function prazoClass(value){
+  const d = value instanceof Date ? value : parseDateLocal(value);
+  if(!d || Number.isNaN(d.getTime())) return "";
+  const t = todayBrazilParts();
+  return d.getFullYear()===t.year && d.getMonth()+1===t.month && d.getDate()===t.day ? "date-today" : "";
+}
+// Previsão: verde se o Gate está aberto ou a data ainda não chegou; vermelho se passou e o Gate segue fechado.
+function previsaoClass(v,cat,date){
+  if(!date || Number.isNaN(date.getTime())) return "";
+  if(gateState(v,cat)==="open" || Date.now() < date.getTime()) return "date-ok";
+  return "date-late";
+}
+function navioKey(name){return String(name ?? "").trim().toUpperCase().replace(/[.#$\[\]\/\u0000-\u001f\u007f]/g, "_")}
+// Cadastro manual tem prioridade sobre o armador vindo do CSV.
+function armadorOf(v){
+  const manual = String(armadoresMap[navioKey(v.navio)] || "").trim();
+  return manual || String(v.armador || "").trim();
+}
+function armadorMark(nome){
+  if(!nome) return "";
+  const logo = ARMADOR_LOGOS[normArmador(nome)];
+  if(logo) return `<span class="carrier-chip"><img class="carrier-logo" src="${escapeHtml(logo)}" alt="${escapeHtml(nome)}" title="${escapeHtml(nome)}" data-nome="${escapeHtml(nome)}" height="16"></span>`;
+  return `<span class="carrier-badge">${escapeHtml(nome)}</span>`;
+}
+function gateText(state){return state === "open" ? "Aberto" : "Fechado"}
+function gatePill(v,cat){
+  const state = gateState(v,cat);
+  return `<span class="gate-pill ${state}">${gateText(state)}</span>`;
+}
+
+// ---------- Dados ----------
+async function loadNavios(force){
+  const res = await fetch(NAVIOS_JSON_URL + (force ? `?t=${Date.now()}` : ""), {cache: force ? "no-store" : "default"});
+  if(!res.ok) throw new Error(`Navios HTTP ${res.status}`);
+  const payload = await res.json();
+  vessels = Object.values(payload.navios || {})
+    .filter(v=>v && v.visit && v.navio && v.eta)
+    .map(v=>({
+      servico:v.servico||"", navio:v.navio||"", visit:v.visit||"", viagem:v.viagem||"", armador:v.armador||"",
+      visit_phase:v.visitPhase||"I", eta:v.eta||"", ddl_reefer:v.ddlReefer||"", ddl_dry:v.ddlDry||"",
+      primeiro_eta:v.primeiroEta||v.eta||""
+    }))
+    .filter(v=>(v.visit_phase||"").toUpperCase()==="I")
+    .filter(v=>!(v.servico==="POOL" && v.navio==="DUMMY"))
+    .sort((a,b)=>(parseDateLocal(a.eta)?.getTime()||0)-(parseDateLocal(b.eta)?.getTime()||0));
+  naviosUpdated = payload.atualizadoEm || "";
+}
+async function fetchAll(table, columns, orderBy){
+  const rows = [];
+  for(let from = 0; ; from += 1000){
+    const {data, error} = await supabase.from(table).select(columns).order(orderBy).range(from, from + 999);
+    if(error) throw error;
+    rows.push(...data);
+    if(data.length < 1000) return rows;
+  }
+}
+const shared = {
+  gates: async()=>{
+    const map = {};
+    for(const r of await fetchAll("controle_gate", "visit,categoria,status", "visit")) (map[r.visit] ||= {})[r.categoria] = r.status;
+    gatesMap = map;
+    sync.gates = `${Object.keys(map).length} escalas lidas`;
+  },
+  previsao: async()=>{
+    const {data, error} = await supabase.from("config_grade").select("valor").eq("id","previsao").maybeSingle();
+    if(error) throw error;
+    previsaoCfg = normalizePrevisao(data?.valor);
+    sync.previsao = data ? "configuração lida" : "padrão";
+  },
+  armadores: async()=>{
+    const rows = await fetchAll("armadores", "navio,armador", "navio");
+    armadoresMap = Object.fromEntries(rows.map(r=>[r.navio, r.armador]));
+    sync.armadores = `${rows.length} cadastrados`;
+  }
+};
+async function loadShared(section){
   try{
-    const suffix=force?`?t=${Date.now()}`:"";
-    const [navRes,gateRes]=await Promise.all([
-      fetch(NAVIOS_JSON_URL+suffix,{cache:force?"no-store":"default"}),
-      fetch(GATES_JSON_URL+suffix,{cache:force?"no-store":"default"})
-    ]);
-    if(!navRes.ok)throw new Error(`Navios HTTP ${navRes.status}`);
-    if(!gateRes.ok)throw new Error(`Gates HTTP ${gateRes.status}`);
-
-    const navPayload=await navRes.json();
-    const gatePayload=await gateRes.json();
-
-    vessels=Object.values(navPayload.navios||{})
-      .filter(v=>v&&v.visit&&v.navio&&v.eta)
-      .map(v=>({
-        servico:v.servico||"",navio:v.navio||"",visit:v.visit||"",viagem:v.viagem||"",
-        visit_phase:v.visitPhase||"I",eta:v.eta||"",ddl_reefer:v.ddlReefer||"",
-        ddl_dry:v.ddlDry||"",primeiro_eta:v.primeiroEta||v.eta||""
-      }))
-      .filter(v=>(v.visit_phase||"").toUpperCase()==="I")
-      .filter(v=>!(v.servico==="POOL"&&v.navio==="DUMMY"))
-      .sort((a,b)=>(parseDateLocal(a.eta)?.getTime()||0)-(parseDateLocal(b.eta)?.getTime()||0));
-
-    gates=gatePayload.gates||{};
-    naviosUpdated=navPayload.atualizadoEm||"";
-    gatesUpdated=gatePayload.atualizadoEm||"";
-
-    fillServices();render();
-    el("sourceInfo").textContent=`Navios: ${formatIso(naviosUpdated)} · Gates: ${formatIso(gatesUpdated)}`;
-    toast(`${vessels.length} navios carregados.`);
+    await shared[section]();
+    sharedUpdated = new Date().toISOString();
+  }catch(err){
+    console.error(`Falha ao ler ${section}:`, err);
+    sync[section] = `ERRO ${err?.message || "leitura indisponível"}`;
+  }
+  renderSync();
+  render();
+}
+function startRealtime(){
+  const tables = {controle_gate:"gates", config_grade:"previsao", armadores:"armadores"};
+  const channel = supabase.channel("consulta-atendimento");
+  for(const [table, section] of Object.entries(tables))
+    channel.on("postgres_changes", {event:"*", schema:"public", table}, ()=>loadShared(section));
+  channel.subscribe(status=>{
+    sync.conexao = status === "SUBSCRIBED" ? "tempo real" : status === "CHANNEL_ERROR" || status === "TIMED_OUT" ? "sem tempo real (use Atualizar dados)" : "conectando";
+    renderSync();
+  });
+}
+async function loadData(force=false){
+  const btn = el("refreshJsonBtn");
+  const old = btn.textContent;
+  btn.disabled = true;
+  btn.setAttribute("aria-busy","true");
+  btn.textContent = "Atualizando…";
+  try{
+    const tasks = [loadNavios(force)];
+    if(supabase) tasks.push(...Object.keys(shared).map(loadShared));
+    await Promise.all(tasks);
+    fillServices();
+    render();
+    el("sourceInfo").textContent = `Navios atualizados em ${formatIso(naviosUpdated)}.`;
+    toast(`${activeVessels().length} navios carregados.`);
   }catch(err){
     console.error(err);
-    el("sourceInfo").textContent="Não foi possível carregar os dados públicos. Verifique os arquivos publicados.";
-    el("emptyState").classList.remove("hidden");
-    el("emptyState").innerHTML="<strong>Dados indisponíveis</strong>Tente novamente em alguns instantes.";
-  }finally{btn.disabled=false;btn.textContent=old;}
+    el("sourceInfo").textContent = "Não foi possível carregar os navios. Tente novamente em alguns instantes.";
+    if(!vessels.length){
+      el("emptyState").classList.remove("hidden");
+      el("emptyState").innerHTML = "<strong>Dados indisponíveis</strong>Tente novamente em alguns instantes.";
+    }
+  }finally{
+    btn.disabled = false;
+    btn.removeAttribute("aria-busy");
+    btn.textContent = old;
+  }
+}
+
+// ---------- Tela ----------
+function renderSync(){
+  const target = el("syncInfo");
+  if(!supabase){
+    target.textContent = "Status dos Gates indisponível: a conexão com o Supabase não foi configurada nesta página.";
+    target.classList.add("is-error");
+    return;
+  }
+  target.innerHTML = [
+    `Supabase: ${sync.conexao}`,
+    `Gates: ${sync.gates}`,
+    `Previsão: ${sync.previsao}`,
+    `Armadores: ${sync.armadores}`
+  ].map(p=>`<span>${escapeHtml(p)}</span>`).join("");
+  target.classList.toggle("is-error", [sync.gates, sync.previsao, sync.armadores].some(x=>x.startsWith("ERRO")));
 }
 function fillServices(){
-  const current=el("serviceFilter").value;
-  const services=[...new Set(vessels.map(v=>v.servico).filter(Boolean))].sort();
-  el("serviceFilter").innerHTML='<option value="">Todos</option>'+services.map(s=>`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
-  if(services.includes(current))el("serviceFilter").value=current;
+  const current = el("serviceFilter").value;
+  const services = [...new Set(activeVessels().map(v=>v.servico).filter(Boolean))].sort();
+  el("serviceFilter").innerHTML = '<option value="">Todos</option>' + services.map(s=>`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
+  if(services.includes(current)) el("serviceFilter").value = current;
 }
 function filtered(){
-  const q=el("searchInput").value.trim().toLowerCase();
-  const service=el("serviceFilter").value;
-  const vip=el("vipFilter").value;
-  const main=el("mainGateFilter").value;
-  return vessels.filter(v=>{
-    const hay=[v.navio,v.servico,v.viagem,v.visit].join(" ").toLowerCase();
-    if(q&&!hay.includes(q))return false;
-    if(service&&v.servico!==service)return false;
-    if(vip&&gateState(v.visit,"vip")!==vip)return false;
-    if(main==="any-open"&&!(gateState(v.visit,"reefer")==="open"||gateState(v.visit,"dry")==="open"))return false;
-    if(main==="all-closed"&&!(gateState(v.visit,"reefer")==="closed"&&gateState(v.visit,"dry")==="closed"))return false;
+  const q = el("searchInput").value.trim().toLowerCase();
+  const service = el("serviceFilter").value;
+  const vip = el("vipFilter").value;
+  const main = el("mainGateFilter").value;
+  return activeVessels().filter(v=>{
+    const hay = [v.navio,v.servico,v.viagem,v.visit,armadorOf(v)].join(" ").toLowerCase();
+    if(q && !hay.includes(q)) return false;
+    if(service && v.servico !== service) return false;
+    if(vip && gateState(v,"gateVIP") !== vip) return false;
+    if(main==="any-open" && !(gateState(v,"reefer")==="open" || gateState(v,"dry")==="open")) return false;
+    if(main==="all-closed" && !(gateState(v,"reefer")==="closed" && gateState(v,"dry")==="closed")) return false;
     return true;
   });
 }
 function renderCards(){
-  el("countInbound").textContent=vessels.length.toLocaleString("pt-BR");
-  el("countVIP").textContent=vessels.filter(v=>gateState(v.visit,"vip")==="open").length;
-  el("countReefer").textContent=vessels.filter(v=>gateState(v.visit,"reefer")==="open").length;
-  el("countDry").textContent=vessels.filter(v=>gateState(v.visit,"dry")==="open").length;
-  const next=vessels.map(v=>({v,d:parseDateLocal(v.eta)})).filter(x=>x.d&&x.d>=new Date()).sort((a,b)=>a.d-b.d)[0];
-  el("nextEta").textContent=next?next.v.navio:"-";
-  el("nextEta").title=next?formatDate(next.d):"";
-  const dates=[naviosUpdated,gatesUpdated].filter(Boolean).sort();
-  el("lastUpdate").textContent=dates.length?formatIso(dates[dates.length-1]):"-";
+  const all = activeVessels();
+  el("countInbound").textContent = all.length.toLocaleString("pt-BR");
+  el("countVIP").textContent = all.filter(v=>gateState(v,"gateVIP")==="open").length;
+  el("countReefer").textContent = all.filter(v=>gateState(v,"reefer")==="open").length;
+  el("countDry").textContent = all.filter(v=>gateState(v,"dry")==="open").length;
+  const next = all.map(v=>({v,d:parseDateLocal(v.eta)})).filter(x=>x.d && x.d>=new Date()).sort((a,b)=>a.d-b.d)[0];
+  el("nextEta").textContent = next ? next.v.navio : "-";
+  el("nextEta").title = next ? formatDate(next.d) : "";
+  el("nextEtaDate").textContent = next ? formatDate(next.d) : "";
+  const dates = [naviosUpdated, sharedUpdated].filter(Boolean).sort();
+  el("lastUpdate").textContent = dates.length ? formatIso(dates[dates.length-1]) : "-";
 }
 function renderTable(){
-  const rows=filtered();const body=el("vesselBody");body.innerHTML="";
+  el("prevVipHead").textContent = `VIP −${previsaoCfg.vip} d`;
+  el("prevReeferHead").textContent = `Reefer −${previsaoCfg.reefer} d`;
+  el("prevDryHead").textContent = `Dry −${previsaoCfg.dry} d`;
+  const rows = filtered();
+  const body = el("vesselBody");
+  body.innerHTML = "";
   for(const v of rows){
-    const first=v.primeiro_eta||v.eta;const prevVip=addDays(v.eta,-10);const seven=addDays(v.eta,-7);
-    const tr=document.createElement("tr");
-    tr.innerHTML=`
+    const first = v.primeiro_eta || v.eta;
+    const seven = addDays(v.eta,-7);
+    const prevVip = addDays(first,-previsaoCfg.vip);
+    const prevReefer = addDays(first,-previsaoCfg.reefer);
+    const prevDry = addDays(first,-previsaoCfg.dry);
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
       <td class="sticky">${escapeHtml(v.servico)}</td>
-      <td class="sticky2">${escapeHtml(v.navio)}</td>
+      <td class="sticky2"><span class="vessel"><span>${escapeHtml(v.navio)}</span>${armadorMark(armadorOf(v))}</span></td>
       <td>${escapeHtml(v.viagem)}</td>
       <td>${escapeHtml(v.visit)}</td>
-      <td><div class="date-main">${formatDate(v.eta)}</div></td>
-      <td>${gatePill(v.visit,"vip")}</td>
-      <td>${gatePill(v.visit,"reefer")}</td>
-      <td>${gatePill(v.visit,"dry")}</td>
-      <td><div class="date-main ${dateClass(seven)}">${formatDate(seven)}</div></td>
-      <td><div class="date-main ${dateClass(v.ddl_reefer)}">${formatDate(v.ddl_reefer)}</div></td>
-      <td><div class="date-main ${dateClass(v.ddl_dry)}">${formatDate(v.ddl_dry)}</div></td>
-      <td><div class="date-main ${dateClass(prevVip)}">${formatDate(prevVip)}</div></td>
-      <td><div class="date-main">${formatDate(first)}</div><div class="date-sub">1º ETA</div></td>
-      <td><div class="date-main">${formatDate(first)}</div><div class="date-sub">1º ETA</div></td>`;
+      <td><div class="date-main">${formatDateShort(v.eta)}</div></td>
+      <td class="gate edge">${gatePill(v,"gateVIP")}</td>
+      <td class="gate">${gatePill(v,"reefer")}</td>
+      <td class="gate">${gatePill(v,"dry")}</td>
+      <td class="edge"><div class="date-main ${prazoClass(seven)}">${formatDateShort(seven)}</div></td>
+      <td><div class="date-main ${prazoClass(v.ddl_reefer)}">${formatDateShort(v.ddl_reefer)}</div></td>
+      <td><div class="date-main ${prazoClass(v.ddl_dry)}">${formatDateShort(v.ddl_dry)}</div><div class="gate-deadline ${deadlineDaysClass(v.ddl_dry)}">${escapeHtml(deadlineDaysText(v.ddl_dry))}</div></td>
+      <td class="edge"><div class="date-main ${previsaoClass(v,"gateVIP",prevVip)}">${formatDateShort(prevVip)}</div></td>
+      <td><div class="date-main ${previsaoClass(v,"reefer",prevReefer)}">${formatDateShort(prevReefer)}</div></td>
+      <td><div class="date-main ${previsaoClass(v,"dry",prevDry)}">${formatDateShort(prevDry)}</div></td>`;
     body.appendChild(tr);
   }
-  el("emptyState").classList.toggle("hidden",rows.length>0);
-  if(vessels.length&&!rows.length)el("emptyState").innerHTML="<strong>Nenhum navio encontrado</strong>Ajuste os filtros.";
+  // Se o arquivo do logo não carregar, volta para o selo com o nome.
+  body.querySelectorAll("img.carrier-logo").forEach(img=>img.addEventListener("error",()=>{
+    const badge = document.createElement("span");
+    badge.className = "carrier-badge";
+    badge.textContent = img.dataset.nome || img.alt;
+    img.closest(".carrier-chip").replaceWith(badge);
+  },{once:true}));
+  if(!vessels.length) return;
+  el("emptyState").classList.toggle("hidden", rows.length>0);
+  if(!rows.length) el("emptyState").innerHTML = "<strong>Nenhum navio encontrado</strong>Ajuste os filtros para visualizar os registros.";
 }
 function render(){renderCards();renderTable();}
+
 ["searchInput","serviceFilter","vipFilter","mainGateFilter"].forEach(id=>el(id).addEventListener(id==="searchInput"?"input":"change",renderTable));
-el("resetFilters").addEventListener("click",()=>{el("searchInput").value="";el("serviceFilter").value="";el("vipFilter").value="";el("mainGateFilter").value="";renderTable();});
-el("refreshJsonBtn").addEventListener("click",()=>loadData(true));
-el("themeToggle").addEventListener("click",()=>{
-  const theme=document.documentElement.dataset.theme==="dark"?"light":"dark";
-  document.documentElement.dataset.theme=theme;
-  try{localStorage.setItem("controleGrade_public_theme_v1",theme);}catch{}
-  refreshTheme();
+el("resetFilters").addEventListener("click",()=>{
+  el("searchInput").value = ""; el("serviceFilter").value = ""; el("vipFilter").value = ""; el("mainGateFilter").value = "";
+  renderTable();
 });
-function refreshTheme(){el("themeToggle").textContent=document.documentElement.dataset.theme==="dark"?"Modo claro":"Modo escuro";}
-refreshTheme();loadData(false);
+el("refreshJsonBtn").addEventListener("click",()=>loadData(true));
+
+// Atualiza cores, prazos e Gates vencidos a cada minuto.
+setInterval(()=>{ if(vessels.length) render(); }, 60000);
+
+renderSync();
+if(supabase) startRealtime();
+loadData(false);
 </script>
 </body>
 </html>
