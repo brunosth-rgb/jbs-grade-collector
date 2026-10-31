@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Controle de Grade, grades de agendamento: janelas disponibilizadas, utilizadas e disponíveis por dia e faixa horária, com histórico de coletas.">
 <title>Controle de Grade</title>
 <script>
 try{
@@ -13,431 +14,453 @@ try{
 }
 </script>
 <style>
-*{box-sizing:border-box}
+/* Hallmark · shape: app screen · genre: modern-minimal · theme: brand · redesign: full
+ * paper: oklch(97.5% 0.006 278) · accent: oklch(36% 0.15 276) · display: system-ui · body: system-ui
+ * nav: top bar shared with the Controle de Gates screen, tabs in the bar · signature: the day's availability, set big above the week strip and the slot grid · states: loading, empty, error, full
+ * axes: light/grotesk-sans/chromatic-indigo · posture: restrained · contrast: pass · v2.0.0 */
+/* Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V3 · weakest: H, six equal cards competed with the recap; the recap now leads with the total set large and the six figures sit below it as one hairline row */
+/* Hallmark · dropped the "Online" indicator · it was static text with a decorative dot and no connection logic behind it, so it always claimed Online */
+/* Hallmark · reworded the eyebrows "Disponibilidade para agendamento", "Grade selecionada" and "Histórico da Grade" · the first became the recap heading, the other two folded into the headings below them */
+/* Hallmark · dismissed F4 · the bar's lime Atualizar Agora and the login's Entrar never share a screen; the history and settings actions are outlined */
+
 :root{
-  --navy:#14143c;
-  --blue:#232378;
-  --green:#91d700;
-  --bg:#f4f6f8;
-  --card:#ffffff;
-  --border:#e5e7eb;
-  --muted:#6b7280;
-  --text:#1f2937;
-  --ok:#15803d;
-  --warn:#b45309;
-  --danger:#b91c1c;
-  --danger-bg:#fff1f2;
-  --soft:#f8fafc;
-  --soft-blue:#f4f5ff;
-}
-body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
-.hidden{display:none!important}
-button{font:inherit}
+  color-scheme:light;
+  --space-3xs:2px;--space-2xs:4px;--space-xs:8px;--space-sm:12px;--space-md:16px;--space-lg:24px;--space-xl:40px;--space-2xl:64px;
+  --text-xs:0.75rem;--text-sm:0.875rem;--text-md:1rem;--text-lg:1.125rem;--text-xl:1.35rem;--text-2xl:1.6rem;--text-3xl:2.4rem;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+  --dur-micro:120ms;
+  --z-raised:10;--z-float:25;--z-sticky:30;
+  --container:1720px;--gutter:24px;
+  --radius-panel:8px;--radius-control:6px;--radius-pill:999px;
 
-.login-box{
-  width:380px;max-width:calc(100% - 32px);margin:100px auto;padding:28px;background:#fff;
-  border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.08)
-}
-.login-box h2{margin:0 0 8px;color:var(--navy)}
-.login-subtitle{margin:0 0 22px;color:var(--muted);font-size:13px}
-input,select{
-  width:100%;padding:11px 12px;border:1px solid #d1d5db;border-radius:7px;font-size:14px;background:#fff
-}
-.login-box input{margin-bottom:12px}
-button{border:0;border-radius:7px;padding:10px 16px;cursor:pointer;font-weight:700}
-.btn-primary{background:var(--blue);color:#fff}
-.login-box .btn-primary{width:100%}
-.btn-secondary{background:#fff;color:var(--navy)}
-.error{margin-top:10px;color:var(--danger);font-size:13px}
+  --font-body:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",sans-serif;
+  --font-display:"Segoe UI Variable Display","Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",sans-serif;
 
-header{
-  background:var(--navy);color:#fff;padding:14px 22px;display:flex;align-items:center;
-  justify-content:space-between;gap:16px;position:sticky;top:0;z-index:30
-}
-header h1{margin:0;font-size:20px}
-button:disabled{opacity:.65;cursor:wait}
-.header-left,.header-right{display:flex;align-items:center;gap:14px}
-.online-indicator{display:flex;align-items:center;gap:7px;font-size:12px;opacity:.95}
-.online-dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
+  --color-paper:oklch(97.5% 0.006 278);
+  --color-paper-2:oklch(95% 0.01 278);
+  --color-surface:oklch(99.3% 0.003 278);
+  --color-ink:oklch(22% 0.05 278);
+  --color-ink-2:oklch(36% 0.04 278);
+  --color-muted:oklch(47% 0.03 278);
+  --color-rule:oklch(89.5% 0.014 278);
+  --color-rule-strong:oklch(80% 0.02 278);
+  --color-accent:oklch(36% 0.15 276);
+  --color-accent-hover:oklch(31% 0.15 276);
+  --color-accent-ink:oklch(98% 0.008 278);
+  --color-focus:oklch(45% 0.2 276);
 
-main{max-width:1580px;margin:0 auto;padding:18px 20px 26px}
+  --color-bar:oklch(21% 0.075 278);
+  --color-bar-ink:oklch(96% 0.01 278);
+  --color-bar-muted:oklch(78% 0.03 278);
+  --color-bar-rule:oklch(36% 0.07 278);
+  --color-bar-hover:oklch(27% 0.08 278);
+  --color-signal:oklch(80% 0.2 128);
+  --color-signal-hover:oklch(86% 0.19 128);
+  --color-signal-ink:oklch(21% 0.075 278);
 
-.top-nav{display:flex;gap:8px;margin-bottom:16px}
-.nav-tab{
-  background:#fff;color:#374151;border:1px solid #dfe3e8;padding:9px 16px
+  --color-free:oklch(95.5% 0.045 150);
+  --color-free-ink:oklch(40% 0.11 150);
+  --color-full:oklch(95.5% 0.03 20);
+  --color-full-ink:oklch(48% 0.17 25);
+  --color-total:oklch(95% 0.02 278);
+  --color-up:oklch(52% 0.13 65);
+  --color-down:oklch(45% 0.12 150);
+  --color-error:oklch(50% 0.19 27);
 }
-.nav-tab.active{background:var(--blue);border-color:var(--blue);color:#fff}
-
-.cards{
-  display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-bottom:16px
-}
-.card{
-  background:#fff;border-radius:10px;padding:13px 15px;box-shadow:0 2px 8px rgba(0,0,0,.05)
-}
-.card-label{font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:5px}
-.card-value{color:var(--navy);font-size:18px;font-weight:800}
-.status-ok{color:var(--ok)}
-
-.section-card{
-  background:#fff;border-radius:10px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.05);margin-bottom:16px
-}
-.section-label{font-size:11px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
-.section-title{font-size:20px;font-weight:800;color:var(--navy)}
-.section-subtitle{font-size:12px;color:var(--muted);margin-top:4px}
-
-.day-selector{
-  display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;margin-top:12px
-}
-.day-button{
-  background:#fff;color:#374151;border:1px solid #dfe3e8;padding:10px 8px;border-radius:7px;transition:.15s ease
-}
-.day-button:hover{border-color:var(--blue)}
-.day-button.active{background:var(--blue);border-color:var(--blue);color:#fff}
-.day-button.today:not(.active){box-shadow:inset 0 0 0 2px var(--green)}
-.day-button-name{display:block;font-size:13px;font-weight:800}
-.day-button-date{display:block;margin-top:3px;font-size:11px;opacity:.8}
-
-.legend{
-  display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;font-size:11px;color:var(--muted)
-}
-.legend-item{display:flex;align-items:center;gap:5px}
-.legend-dot{width:9px;height:9px;border-radius:50%}
-.legend-dot.free{background:#bbf7d0}
-.legend-dot.full{background:#fecdd3}
-
-.table-wrap{
-  overflow-x:auto;
-  overflow-y:clip;
-  background:#fff;
-  border-radius:10px;
-  box-shadow:0 2px 8px rgba(0,0,0,.05)
-}
-table{width:100%;border-collapse:separate;border-spacing:0;min-width:1400px}
-th{
-  background:var(--blue);
-  color:#fff;
-  position:relative;
-  z-index:2;
-  padding:10px 8px;
-  font-size:11px;
-  text-align:center;
-  white-space:nowrap
-}
-td{
-  padding:7px 6px;border-bottom:1px solid var(--border);text-align:center;font-size:12px;background:#fff
-}
-tr:hover td{background:#f8fafc}
-th:first-child,td:first-child{
-  position:sticky;
-  left:0;
-  text-align:left;
-  font-weight:800;
-  white-space:nowrap
-}
-th:first-child{
-  background:var(--blue);
-  z-index:5
-}
-td:first-child{
-  z-index:4
-}
-td:first-child{background:#fff}
-tr:hover td:first-child{background:#f8fafc}
-
-.total-cell{
-  background:var(--soft-blue)!important;
-  color:var(--navy);
-  font-weight:800
-}
-
-.slot-cell{
-  min-width:86px;
-}
-.slot-main{
-  font-size:12px;
-  font-weight:800;
-  color:var(--navy);
-  line-height:1.2
-}
-.slot-sub{
-  margin-top:2px;
-  font-size:10px;
-  color:var(--muted);
-  line-height:1.2
-}
-.slot-cell.slot-free{
-  background:#ecfdf5
-}
-.slot-cell.slot-free .slot-main{
-  color:#166534
-}
-.slot-cell.slot-free .slot-sub{
-  color:#15803d
-}
-.slot-cell.slot-full{
-  background:var(--danger-bg)
-}
-.slot-cell.slot-full .slot-main,
-.slot-cell.slot-full .slot-sub{
-  color:var(--danger)
-}
-
-.empty-state{padding:32px;text-align:center;color:var(--muted)}
-
-.history-controls{
-  display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:12px;align-items:end
-}
-.field label{
-  display:block;font-size:11px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;font-weight:700
-}
-.history-summary{
-  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:14px
-}
-.summary-box{
-  background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:12px
-}
-.summary-value{font-size:18px;font-weight:800;color:var(--navy);margin-top:4px}
-.delta-positive{color:#b45309}
-.delta-negative{color:#15803d}
-.delta-neutral{color:#6b7280}
-.history-table td.delta-up{color:#b45309;font-weight:800}
-.history-table td.delta-down{color:#15803d;font-weight:800}
-.history-table td.delta-zero{color:#6b7280}
-
-
-.floating-table-header{
-  position:fixed;
-  z-index:25;
-  overflow:hidden;
-  display:none;
-  pointer-events:none;
-  background:transparent;
-}
-.floating-table-header.visible{
-  display:block;
-}
-
-.floating-table-header table{
-  border-collapse:separate;
-  border-spacing:0;
-  margin:0;
-  min-width:0;
-  table-layout:fixed;
-}
-.floating-table-header th{
-  position:relative!important;
-  left:auto!important;
-  top:auto!important;
-  z-index:1!important;
-  box-shadow:none;
-}
-
-@media(max-width:1200px){
-  .cards{grid-template-columns:repeat(3,1fr)}
-}
-@media(max-width:950px){
-  .cards,.history-summary{grid-template-columns:repeat(2,1fr)}
-  .day-selector{grid-template-columns:repeat(4,1fr)}
-  .history-controls{grid-template-columns:1fr}
-}
-@media(max-width:600px){
-  main{padding:14px}
-  .cards,.history-summary{grid-template-columns:1fr}
-  .day-selector{grid-template-columns:repeat(2,1fr)}
-  header{padding:12px 14px;flex-wrap:wrap}
-  .header-right{flex-wrap:wrap;gap:8px}
-  .online-indicator{display:none}
-}
-.available-recap{border:1px solid #bbf7d0}
-.recap-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:14px}
-.recap-item{padding:12px;background:#f0fdf4;border-radius:7px}
-.recap-item.zero{background:#f4f6f8}
-.recap-item .card-value{color:#166534;font-size:22px}
-.recap-item .card-label{font-size:11px;text-transform:none}
-
-:root{color-scheme:light}
 :root[data-theme="dark"]{
   color-scheme:dark;
-  --bg:#10151f;
-  --card:#1a2230;
-  --border:#354258;
-  --muted:#a9b7cc;
-  --text:#e6edf7;
-  --soft:#222d3d;
-  --soft-blue:#222b4f;
-  --ok:#8ce5ac;
-  --warn:#ffd17a;
-  --danger:#ffa5ad;
-  --danger-bg:#40232d;
-}
-[data-theme="dark"] body{background:var(--bg);color:var(--text)}
-[data-theme="dark"] .login-box,
-[data-theme="dark"] .card,
-[data-theme="dark"] .section-card,
-[data-theme="dark"] .table-wrap{background:var(--card)}
-[data-theme="dark"] .login-box h2,
-[data-theme="dark"] .card-value,
-[data-theme="dark"] .section-title,
-[data-theme="dark"] .summary-value,
-[data-theme="dark"] .slot-main{color:var(--text)}
-[data-theme="dark"] input,
-[data-theme="dark"] select{background:var(--bg);color:var(--text);border-color:var(--border)}
-[data-theme="dark"] input::placeholder{color:#7f8da3}
-[data-theme="dark"] .btn-secondary{background:#2a3555;color:#dce5ff}
-[data-theme="dark"] .nav-tab{background:var(--card);color:var(--text);border-color:var(--border)}
-[data-theme="dark"] .nav-tab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
-[data-theme="dark"] .day-button{background:var(--card);color:var(--text);border-color:var(--border)}
-[data-theme="dark"] .day-button.active{background:var(--blue);color:#fff;border-color:var(--blue)}
-[data-theme="dark"] td,
-[data-theme="dark"] td:first-child{background:var(--card);color:var(--text)}
-[data-theme="dark"] tr:hover td,
-[data-theme="dark"] tr:hover td:first-child{background:var(--soft)}
-[data-theme="dark"] .total-cell{background:var(--soft-blue)!important;color:#dce5ff}
-[data-theme="dark"] .slot-cell.slot-free{background:#17372a}
-[data-theme="dark"] .slot-cell.slot-free .slot-main,
-[data-theme="dark"] .slot-cell.slot-free .slot-sub{color:#8ce5ac}
-[data-theme="dark"] .slot-cell.slot-full{background:var(--danger-bg)}
-[data-theme="dark"] .slot-cell.slot-full .slot-main,
-[data-theme="dark"] .slot-cell.slot-full .slot-sub{color:var(--danger)}
-[data-theme="dark"] .summary-box{background:var(--soft);border-color:var(--border)}
-[data-theme="dark"] .available-recap{border-color:#356c4c}
-[data-theme="dark"] .recap-item{background:#17372a}
-[data-theme="dark"] .recap-item.zero{background:var(--soft)}
-[data-theme="dark"] .recap-item .card-value{color:#8ce5ac}
-[data-theme="dark"] .delta-positive,
-[data-theme="dark"] .history-table td.delta-up{color:#ffd17a}
-[data-theme="dark"] .delta-negative,
-[data-theme="dark"] .history-table td.delta-down{color:#8ce5ac}
-[data-theme="dark"] .delta-neutral,
-[data-theme="dark"] .history-table td.delta-zero{color:var(--muted)}
-[data-theme="dark"] .legend-dot.free{background:#356c4c}
-[data-theme="dark"] .legend-dot.full{background:#79414d}
-[data-theme="dark"] .floating-table-header{background:transparent}
-.theme-toggle{white-space:nowrap}
+  --color-paper:oklch(16% 0.02 278);
+  --color-paper-2:oklch(20% 0.024 278);
+  --color-surface:oklch(18% 0.022 278);
+  --color-ink:oklch(94% 0.012 278);
+  --color-ink-2:oklch(83% 0.02 278);
+  --color-muted:oklch(71% 0.03 278);
+  --color-rule:oklch(28% 0.03 278);
+  --color-rule-strong:oklch(38% 0.035 278);
+  --color-accent:oklch(82% 0.2 128);
+  --color-accent-hover:oklch(87% 0.19 128);
+  --color-accent-ink:oklch(20% 0.06 278);
+  --color-focus:oklch(84% 0.2 128);
 
+  --color-bar:oklch(21% 0.07 278);
+  --color-bar-rule:oklch(32% 0.06 278);
+
+  --color-free:oklch(28% 0.06 150);
+  --color-free-ink:oklch(87% 0.13 150);
+  --color-full:oklch(28% 0.06 20);
+  --color-full-ink:oklch(80% 0.11 22);
+  --color-total:oklch(23% 0.035 278);
+  --color-up:oklch(84% 0.12 80);
+  --color-down:oklch(84% 0.13 150);
+  --color-error:oklch(75% 0.13 22);
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html,body{overflow-x:clip}
+html{scrollbar-color:var(--color-rule-strong) var(--color-paper)}
+body{margin:0;background:var(--color-paper);color:var(--color-ink);font-family:var(--font-body);font-size:var(--text-md);line-height:1.5;-webkit-font-smoothing:antialiased;caret-color:var(--color-focus)}
+::selection{background:color-mix(in oklab,var(--color-focus) 24%,transparent)}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+h1,h2,h3{margin:0;font-family:var(--font-display);font-weight:600;letter-spacing:-0.01em;line-height:1.15;text-wrap:balance;overflow-wrap:break-word;min-width:0}
+p{margin:0;text-wrap:pretty}
+.hidden,[hidden]{display:none!important}
+.muted{color:var(--color-muted);font-size:var(--text-sm)}
+:focus-visible{outline:2px solid var(--color-focus);outline-offset:2px}
+
+/* Controls */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:var(--space-xs);
+  min-height:36px;padding:0 var(--space-md);border:1px solid transparent;border-radius:var(--radius-control);
+  background:transparent;color:var(--color-ink);font-size:var(--text-sm);font-weight:600;line-height:1;white-space:nowrap;
+  transition:background-color var(--dur-micro) var(--ease-out),border-color var(--dur-micro) var(--ease-out),color var(--dur-micro) var(--ease-out),transform var(--dur-micro) var(--ease-out)
+}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible{outline:2px solid var(--color-focus);outline-offset:2px}
+.btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.btn-primary{background:var(--color-accent);color:var(--color-accent-ink)}
+.btn-primary:hover:not(:disabled){background:var(--color-accent-hover)}
+.btn-secondary{border-color:var(--color-rule-strong)}
+.btn-secondary:hover:not(:disabled){background:var(--color-paper-2)}
+.btn-block{width:100%}
+.link-btn{
+  border:0;background:transparent;padding:0;color:var(--color-ink-2);font-size:var(--text-sm);
+  text-decoration:underline;text-decoration-color:var(--color-rule-strong);text-underline-offset:0.2em;
+  transition:color var(--dur-micro) var(--ease-out),text-decoration-color var(--dur-micro) var(--ease-out)
+}
+.link-btn:hover{color:var(--color-ink);text-decoration-color:currentColor}
+.link-btn:active{color:var(--color-muted)}
+.link-btn:focus-visible{outline:2px solid var(--color-focus);outline-offset:2px;border-radius:var(--space-3xs)}
+@media (pointer:coarse){.btn{min-height:44px}}
+
+.field{display:flex;flex-direction:column;gap:var(--space-2xs);min-width:0}
+.field label{font-size:var(--text-sm);color:var(--color-muted)}
+.field input,.field select{
+  width:100%;min-height:36px;padding:0 var(--space-sm);border:1px solid var(--color-rule-strong);border-radius:var(--radius-control);
+  background:var(--color-surface);color:var(--color-ink);font-size:var(--text-sm);
+  transition:border-color var(--dur-micro) var(--ease-out)
+}
+.field input:hover,.field select:hover{border-color:var(--color-muted)}
+.field input:focus-visible,.field select:focus-visible{outline:2px solid var(--color-focus);outline-offset:-1px}
+.field input:disabled,.field select:disabled{opacity:.55;cursor:not-allowed}
+.field input::placeholder{color:var(--color-muted)}
+.error{min-height:1lh;font-size:var(--text-sm);color:var(--color-error)}
+
+/* Sign-in */
+.login{min-height:100dvh;display:grid;place-items:center;padding:var(--space-lg) var(--space-md)}
+.login-panel{
+  width:min(380px,100%);display:flex;flex-direction:column;gap:var(--space-md);overflow:hidden;
+  background:var(--color-surface);color:var(--color-ink);border:1px solid var(--color-rule);border-radius:var(--radius-panel)
+}
+.login-brand{background:var(--color-bar);padding:var(--space-lg)}
+.login-brand img{display:block;height:44px;width:auto}
+.login-body{display:flex;flex-direction:column;gap:var(--space-md);padding:0 var(--space-lg) var(--space-lg)}
+.login-body h2{font-size:var(--text-2xl)}
+.login-body .field input{min-height:40px;font-size:var(--text-md)}
+
+/* Top bar */
+.bar{position:sticky;top:0;z-index:var(--z-sticky);background:var(--color-bar);color:var(--color-bar-ink)}
+.bar-inner{
+  max-width:var(--container);margin:0 auto;padding:0 var(--gutter);min-height:60px;
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:var(--space-lg)
+}
+.brand{display:flex;align-items:center;gap:var(--space-sm);min-width:0}
+.brand-logo{display:block;flex-shrink:0;height:36px;width:auto}
+.brand-text{padding-left:var(--space-sm);border-left:1px solid var(--color-bar-rule);min-width:0}
+.brand h1{font-size:var(--text-lg);color:var(--color-bar-ink)}
+.brand small{display:block;font-size:var(--text-xs);color:var(--color-bar-muted)}
+.tabs{display:flex;align-self:stretch;overflow-x:auto;scrollbar-width:none}
+.tablist{display:flex;gap:var(--space-2xs)}
+.nav-tab{
+  display:inline-flex;align-items:center;border:0;background:transparent;color:var(--color-bar-muted);padding:0 var(--space-md);
+  font-size:var(--text-sm);font-weight:600;white-space:nowrap;box-shadow:inset 0 -2px 0 transparent;
+  transition:color var(--dur-micro) var(--ease-out),background-color var(--dur-micro) var(--ease-out),box-shadow var(--dur-micro) var(--ease-out)
+}
+.nav-tab:hover{color:var(--color-bar-ink);background:var(--color-bar-hover)}
+.nav-tab:active{background:var(--color-bar-rule)}
+.nav-tab:focus-visible{outline:2px solid var(--color-signal);outline-offset:-4px}
+.nav-tab.active{color:var(--color-bar-ink);box-shadow:inset 0 -2px 0 var(--color-signal)}
+.header-actions{display:flex;align-items:center;gap:var(--space-xs)}
+.bar .btn-secondary{color:var(--color-bar-ink);border-color:var(--color-bar-rule)}
+.bar .btn-secondary:hover:not(:disabled){background:var(--color-bar-hover)}
+.bar .btn:focus-visible{outline-color:var(--color-signal)}
+.bar .btn-update{background:var(--color-signal);color:var(--color-signal-ink);min-width:12.5rem}
+.bar .btn-update:hover:not(:disabled){background:var(--color-signal-hover)}
+
+/* Page */
+main{max-width:var(--container);margin:0 auto;padding:var(--space-lg) var(--gutter) var(--space-xl)}
+.view{display:flex;flex-direction:column;gap:var(--space-lg)}
+.update-line{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-md);flex-wrap:wrap;margin-bottom:var(--space-md);font-size:var(--text-sm)}
+.update-status{color:var(--color-ink-2);min-height:1lh}
+.settings{display:flex;flex-direction:column;gap:var(--space-sm);max-width:40rem;padding:var(--space-lg);margin-bottom:var(--space-lg)}
+.settings .actions{display:flex;gap:var(--space-xs)}
+
+.panel{background:var(--color-surface);color:var(--color-ink);border:1px solid var(--color-rule);border-radius:var(--radius-panel);overflow:hidden}
+.panel-head{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--space-md);flex-wrap:wrap;padding:var(--space-md) var(--space-lg);border-bottom:1px solid var(--color-rule)}
+.panel-head h2{font-size:var(--text-xl)}
+.panel-head p{margin-top:var(--space-2xs);max-width:72ch}
+
+/* O dia: título, faixa da semana e o resumo do que ainda pode ser agendado */
+.day-head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-md);flex-wrap:wrap}
+.day-head h2{font-size:var(--text-2xl)}
+.day-selector{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border:1px solid var(--color-rule);border-radius:var(--radius-panel);overflow:hidden;background:var(--color-surface)}
+.day-button{
+  position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-3xs);min-height:56px;
+  padding:var(--space-xs) var(--space-md);border:0;border-left:1px solid var(--color-rule);background:transparent;color:var(--color-ink-2);text-align:left;
+  transition:background-color var(--dur-micro) var(--ease-out),color var(--dur-micro) var(--ease-out)
+}
+.day-button:first-child{border-left:0}
+.day-button:hover{background:var(--color-paper-2);color:var(--color-ink)}
+.day-button:active{background:var(--color-rule)}
+.day-button:focus-visible{outline:2px solid var(--color-focus);outline-offset:-2px}
+.day-button.active{background:var(--color-accent);color:var(--color-accent-ink)}
+.day-button.today::after{content:"hoje";position:absolute;top:var(--space-xs);right:var(--space-sm);font-size:var(--text-xs);font-weight:600;color:var(--color-free-ink)}
+.day-button.today.active::after{color:inherit}
+.day-button-name{font-size:var(--text-md);font-weight:600}
+.day-button-date{font-size:var(--text-xs);opacity:.85;font-variant-numeric:tabular-nums}
+
+.recap{display:grid;grid-template-columns:minmax(0,18rem) minmax(0,1fr);background:var(--color-surface);border:1px solid var(--color-rule);border-radius:var(--radius-panel);overflow:hidden}
+.recap-head{display:flex;flex-direction:column;gap:var(--space-2xs);padding:var(--space-lg);border-right:1px solid var(--color-rule);background:var(--color-paper-2)}
+.recap-head h3{font-size:var(--text-lg)}
+.recap-date{font-weight:600;color:var(--color-ink-2)}
+.recap-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(8.5rem,1fr));align-content:start;gap:0;padding:var(--space-md) var(--space-lg)}
+.recap-item{padding:var(--space-xs) var(--space-md) var(--space-xs) 0;min-width:0}
+.recap-item .card-label{font-size:var(--text-sm);color:var(--color-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.recap-item .card-value{font-size:var(--text-xl);font-weight:600;color:var(--color-free-ink);font-variant-numeric:tabular-nums;line-height:1.25}
+.recap-item.zero .card-value{color:var(--color-muted)}
+.recap-item:first-child{grid-column:1 / -1;padding-bottom:var(--space-sm);margin-bottom:var(--space-xs);border-bottom:1px solid var(--color-rule)}
+.recap-item:first-child .card-value{font-size:var(--text-3xl);line-height:1.1}
+
+.figures{margin:0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr))}
+.figures-4{grid-template-columns:repeat(4,minmax(0,1fr));padding:var(--space-md) var(--space-lg);border-bottom:1px solid var(--color-rule)}
+.figures>div{padding:0 var(--space-lg);border-left:1px solid var(--color-rule);min-width:0}
+.figures>div:first-child{padding-left:0;border-left:0}
+.figures>div:last-child{padding-right:0}
+.figures dt{font-size:var(--text-sm);color:var(--color-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.figures dd{margin:0}
+.figure,.summary-value{font-size:var(--text-xl);font-weight:600;line-height:1.3;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.figure-text{font-size:var(--text-md);line-height:1.9}
+
+.legend{display:flex;flex-wrap:wrap;gap:var(--space-xs) var(--space-lg);margin:0;padding:0;list-style:none;font-size:var(--text-sm);color:var(--color-muted)}
+.legend li{display:flex;align-items:center;gap:var(--space-xs)}
+.swatch{width:14px;height:14px;border-radius:var(--space-3xs);border:1px solid var(--color-rule-strong)}
+.swatch.free{background:var(--color-free)}
+.swatch.full{background:var(--color-full)}
+
+/* Grade */
+.table-wrap{overflow-x:auto;overflow-y:clip;background:var(--color-surface)}
+table{width:100%;border-collapse:separate;border-spacing:0;min-width:1400px;font-size:var(--text-sm);font-variant-numeric:tabular-nums}
+th{
+  position:relative;z-index:2;height:40px;padding:0 var(--space-xs);background:var(--color-paper-2);color:var(--color-ink-2);
+  font-weight:600;text-align:center;white-space:nowrap;border-bottom:1px solid var(--color-rule)
+}
+td{padding:var(--space-xs);border-bottom:1px solid var(--color-rule);text-align:center;background:var(--color-surface);transition:background-color var(--dur-micro) var(--ease-out)}
+tbody tr:last-child td{border-bottom:0}
+tr:hover td{background:var(--color-paper-2)}
+th:first-child,td:first-child{position:sticky;left:0;text-align:left;white-space:nowrap;padding-left:var(--space-lg);box-shadow:1px 0 0 var(--color-rule)}
+th:first-child{z-index:5}
+td:first-child{z-index:4;font-weight:600;color:var(--color-ink)}
+
+.total-cell{background:var(--color-total)!important}
+.slot-cell{min-width:86px;border-left:1px solid var(--color-rule)}
+.slot-main{font-weight:600;color:var(--color-ink);line-height:1.25}
+.slot-sub{margin-top:var(--space-3xs);font-size:var(--text-xs);color:var(--color-muted);line-height:1.2}
+.slot-cell.slot-free{background:var(--color-free)}
+.slot-cell.slot-free .slot-main,.slot-cell.slot-free .slot-sub{color:var(--color-free-ink)}
+.slot-cell.slot-full{background:var(--color-full)}
+.slot-cell.slot-full .slot-main,.slot-cell.slot-full .slot-sub{color:var(--color-full-ink)}
+tr:hover td.slot-free,tr:hover td.slot-full{filter:brightness(0.97)}
+.empty-state{padding:var(--space-2xl) var(--space-md);text-align:center;color:var(--color-muted);font-size:var(--text-sm)}
+
+/* Histórico */
+.history-table{min-width:900px}
+.history-table th,.history-table td{text-align:right}
+.history-table th:first-child,.history-table td:first-child{text-align:left}
+.toolbar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-sm);padding:var(--space-md) var(--space-lg);border-bottom:1px solid var(--color-rule);background:var(--color-paper-2)}
+.delta-positive,.history-table td.delta-up{color:var(--color-up)}
+.delta-negative,.history-table td.delta-down{color:var(--color-down)}
+.delta-neutral,.history-table td.delta-zero{color:var(--color-muted)}
+.history-table td.delta-up,.history-table td.delta-down{font-weight:600}
+td.avail-ok{color:var(--color-free-ink);font-weight:600}
+td.avail-none{color:var(--color-full-ink);font-weight:600}
+
+/* Cabeçalho que acompanha a rolagem (montado pelo script) */
+.floating-table-header{position:fixed;z-index:var(--z-float);overflow:hidden;display:none;pointer-events:none;background:transparent}
+.floating-table-header.visible{display:block}
+.floating-table-header table{border-collapse:separate;border-spacing:0;margin:0;min-width:0;table-layout:fixed}
+.floating-table-header th{position:relative!important;left:auto!important;top:auto!important;z-index:1!important;box-shadow:0 1px 0 var(--color-rule)}
+
+@media (max-width:75rem){
+  .figures{grid-template-columns:repeat(3,minmax(0,1fr));row-gap:var(--space-md)}
+  .figures>div:nth-child(4){padding-left:0;border-left:0}
+  .figures-4{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .figures-4>div:nth-child(3){padding-left:0;border-left:0}
+  .recap{grid-template-columns:minmax(0,1fr)}
+  .recap-head{border-right:0;border-bottom:1px solid var(--color-rule)}
+}
+@media (max-width:60rem){
+  :root{--gutter:16px}
+  .bar{position:static}
+  .bar-inner{grid-template-columns:minmax(0,1fr) auto;row-gap:0;padding-top:var(--space-xs)}
+  .tabs{grid-column:1 / -1;grid-row:2;min-height:44px}
+  .header-actions{flex-wrap:wrap;justify-content:flex-end}
+  .bar .btn-update{min-width:0}
+  .day-selector{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .day-button:nth-child(5){border-left:0}
+  .day-button:nth-child(n+5){border-top:1px solid var(--color-rule)}
+  .toolbar{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:40rem){
+  .brand-text{display:none}
+  .figures,.figures-4{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .figures>div{padding:0 var(--space-md)}
+  .figures>div:nth-child(4),.figures-4>div:nth-child(3){padding-left:var(--space-md);border-left:1px solid var(--color-rule)}
+  .figures>div:nth-child(odd){padding-left:0;border-left:0}
+  .day-selector{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .day-button:nth-child(odd){border-left:0}
+  .day-button:nth-child(5){border-left:1px solid var(--color-rule)}
+  .day-button:nth-child(n+3){border-top:1px solid var(--color-rule)}
+  .field input,.field select{font-size:var(--text-md);min-height:40px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition-duration:0.01ms!important;animation-duration:0.01ms!important}
+}
 </style>
 </head>
 
 <body>
-<div id="loginView" class="login-box">
-  <h2>Controle de Grade</h2>
-  <p class="login-subtitle">Acesso restrito aos usuários autorizados.</p>
-  <input id="email" type="email" placeholder="E-mail" autocomplete="username">
-  <input id="password" type="password" placeholder="Senha" autocomplete="current-password">
-  <button id="loginButton" class="btn-primary">Entrar</button>
-  <button type="button" class="btn-secondary theme-toggle" style="width:100%;margin-top:10px">Modo escuro</button>
-  <div id="loginError" class="error"></div>
+<div id="loginView" class="login">
+  <div class="login-panel">
+    <div class="login-brand"><img src="navios/logos/jbs-terminais.svg" alt="JBS Terminais" width="77" height="44"></div>
+    <div class="login-body">
+      <h2>Controle de Grade</h2>
+      <p class="muted">Acesso restrito aos usuários autorizados.</p>
+      <div class="field">
+        <label for="email">E-mail</label>
+        <input id="email" name="email" type="email" autocomplete="username" inputmode="email">
+      </div>
+      <div class="field">
+        <label for="password">Senha</label>
+        <input id="password" name="password" type="password" autocomplete="current-password">
+      </div>
+      <button id="loginButton" type="button" class="btn btn-primary btn-block">Entrar</button>
+      <div id="loginError" class="error" role="alert"></div>
+      <button type="button" class="btn btn-secondary btn-block theme-toggle">Modo escuro</button>
+    </div>
+  </div>
 </div>
 
 <div id="appView" class="hidden">
-  <header>
-    <div class="header-left">
-      <h1>Controle de Grade</h1>
-    </div>
-    <div class="header-right">
-      <div class="online-indicator"><span class="online-dot"></span><span>Online</span></div>
-      <button type="button" class="btn-secondary theme-toggle">Modo escuro</button>
-      <button id="updateNowButton" class="btn-secondary">Atualizar Agora</button>
-      <button id="logoutButton" class="btn-secondary">Sair</button>
+  <header class="bar">
+    <div class="bar-inner">
+      <div class="brand">
+        <img class="brand-logo" src="navios/logos/jbs-terminais.svg" alt="JBS Terminais" width="63" height="36">
+        <div class="brand-text">
+          <h1>Controle de Grade</h1>
+          <small>Grades de agendamento</small>
+        </div>
+      </div>
+      <nav class="tabs" aria-label="Seções">
+        <div class="tablist" role="tablist">
+          <button id="tabAtual" type="button" class="nav-tab active" role="tab" aria-selected="true" aria-controls="viewAtual">Visão Atual</button>
+          <button id="tabHistorico" type="button" class="nav-tab" role="tab" aria-selected="false" aria-controls="viewHistorico">Histórico</button>
+        </div>
+      </nav>
+      <div class="header-actions">
+        <button type="button" class="btn btn-secondary theme-toggle">Modo escuro</button>
+        <button id="updateNowButton" type="button" class="btn btn-update">Atualizar Agora</button>
+        <button id="logoutButton" type="button" class="btn btn-secondary">Sair</button>
+      </div>
     </div>
   </header>
 
   <div id="floatingTableHeader" class="floating-table-header" aria-hidden="true"></div>
 
   <main>
-    <div id="updateNowStatus" role="status" aria-live="polite" style="margin-bottom:12px"></div>
-    <div style="margin-bottom:12px">
-      <button id="configureTrigger" class="btn-secondary">Configurar atualização</button>
-      <form id="triggerSettings" class="section-card hidden" style="margin-top:10px">
+    <div class="update-line">
+      <div id="updateNowStatus" class="update-status" role="status" aria-live="polite"></div>
+      <button id="configureTrigger" type="button" class="link-btn" aria-controls="triggerSettings">Configurar atualização</button>
+    </div>
+    <form id="triggerSettings" class="panel settings hidden">
+      <div class="field">
         <label for="triggerEndpoint">Endereço do seu serviço de atualização</label>
-        <p class="section-subtitle">Use somente o serviço publicado na sua conta Cloudflare. O endereço fica salvo neste navegador.</p>
-        <input id="triggerEndpoint" type="url" placeholder="https://controle-grade-gatilho.sua-conta.workers.dev" required style="margin-top:10px">
-        <button type="submit" class="btn-primary">Salvar endereço</button>
-        <div id="triggerSettingsError" role="alert" class="error"></div>
-      </form>
-    </div>
-    <div class="top-nav">
-      <button id="tabAtual" class="nav-tab active">Visão Atual</button>
-      <button id="tabHistorico" class="nav-tab">Histórico</button>
-    </div>
+        <input id="triggerEndpoint" type="url" placeholder="https://controle-grade-gatilho.sua-conta.workers.dev" required>
+      </div>
+      <p class="muted">Use somente o serviço publicado na sua conta Cloudflare. O endereço fica salvo neste navegador.</p>
+      <div class="actions"><button type="submit" class="btn btn-secondary">Salvar endereço</button></div>
+      <div id="triggerSettingsError" role="alert" class="error"></div>
+    </form>
 
-    <section id="viewAtual">
-      <div class="section-card available-recap">
-        <div class="section-label">Disponibilidade para agendamento</div>
-        <div id="recapDate" class="section-title">-</div>
-        <div id="recapRule" class="section-subtitle">Somente o dia selecionado. Faixas que já começaram não entram no resumo.</div>
+    <section id="viewAtual" class="view" role="tabpanel" aria-labelledby="tabAtual">
+      <div class="day-head">
+        <h2 id="selectedDateTitle">-</h2>
+        <p id="weekRange" class="muted">-</p>
+      </div>
+      <div id="daySelector" class="day-selector" role="group" aria-label="Dia da grade"></div>
+
+      <section class="recap" aria-labelledby="recapHeading">
+        <div class="recap-head">
+          <h3 id="recapHeading">Disponibilidade para agendamento</h3>
+          <p id="recapDate" class="recap-date">-</p>
+          <p id="recapRule" class="muted">Somente o dia selecionado. Faixas que já começaram não entram no resumo.</p>
+        </div>
         <div id="availableRecap" class="recap-grid" aria-live="polite"></div>
-      </div>
-      <div class="cards">
-        <div class="card">
-          <div class="card-label">Status</div>
-          <div id="status" class="card-value status-ok">-</div>
-        </div>
-        <div class="card">
-          <div class="card-label">Última atualização</div>
-          <div id="updatedAt" class="card-value">-</div>
-        </div>
-        <div class="card">
-          <div class="card-label">Períodos</div>
-          <div id="periodCount" class="card-value">-</div>
-        </div>
-        <div class="card">
-          <div class="card-label">Janelas disponibilizadas</div>
-          <div id="dayOffered" class="card-value">-</div>
-        </div>
-        <div class="card">
-          <div class="card-label">Janelas utilizadas</div>
-          <div id="dayUsed" class="card-value">-</div>
-        </div>
-        <div class="card">
-          <div class="card-label">Janelas disponíveis</div>
-          <div id="dayAvailable" class="card-value">-</div>
-        </div>
-      </div>
+      </section>
 
-      <div class="section-card">
-        <div class="section-label">Grade selecionada</div>
-        <div id="selectedDateTitle" class="section-title">-</div>
-        <div id="weekRange" class="section-subtitle">-</div>
-        <div id="daySelector" class="day-selector"></div>
+      <dl class="figures">
+        <div><dt>Status</dt><dd id="status" class="figure">-</dd></div>
+        <div><dt>Última atualização</dt><dd id="updatedAt" class="figure figure-text">-</dd></div>
+        <div><dt>Períodos</dt><dd id="periodCount" class="figure">-</dd></div>
+        <div><dt>Janelas disponibilizadas</dt><dd id="dayOffered" class="figure">-</dd></div>
+        <div><dt>Janelas utilizadas</dt><dd id="dayUsed" class="figure">-</dd></div>
+        <div><dt>Janelas disponíveis</dt><dd id="dayAvailable" class="figure">-</dd></div>
+      </dl>
 
-        <div class="legend">
-          <div class="legend-item"><span class="legend-dot free"></span><span>Verde: ainda há grades disponíveis</span></div>
-          <div class="legend-item"><span class="legend-dot full"></span><span>Vermelho: todas as grades foram utilizadas</span></div>
-          <div class="legend-item"><strong>Formato:</strong>&nbsp;utilizadas / disponibilizadas</div>
+      <div class="panel">
+        <div class="panel-head">
+          <ul class="legend">
+            <li><span class="swatch free" aria-hidden="true"></span>Verde: ainda há grades disponíveis</li>
+            <li><span class="swatch full" aria-hidden="true"></span>Vermelho: todas as grades foram utilizadas</li>
+            <li>Formato: utilizadas / disponibilizadas</li>
+          </ul>
         </div>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead><tr id="tableHeader"></tr></thead>
-          <tbody id="tableBody"></tbody>
-        </table>
-        <div id="emptyState" class="empty-state hidden">Nenhum dado disponível para o dia selecionado.</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr id="tableHeader"></tr></thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+          <div id="emptyState" class="empty-state hidden">Nenhum dado disponível para o dia selecionado.</div>
+        </div>
       </div>
     </section>
 
-    <section id="viewHistorico" class="hidden">
-      <div class="section-card">
-        <div class="section-label">Histórico da Grade</div>
-        <div class="section-title">Consolidado por dia</div>
-        <div class="section-subtitle">Última coleta disponível para cada data da grade. As coletas não são somadas. Datas futuras representam a disponibilidade prevista; datas passadas refletem a última coleta registrada.</div>
-        <button id="refreshHistory" class="btn-primary" style="margin-top:12px">Atualizar histórico</button>
-        <div id="dailyHistoryStatus" role="status" class="section-subtitle"></div>
+    <section id="viewHistorico" class="view hidden" role="tabpanel" aria-labelledby="tabHistorico">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Consolidado por dia</h2>
+            <p class="muted">Última coleta disponível para cada data da grade. As coletas não são somadas. Datas futuras representam a disponibilidade prevista; datas passadas refletem a última coleta registrada.</p>
+            <p id="dailyHistoryStatus" role="status" class="muted"></p>
+          </div>
+          <button id="refreshHistory" type="button" class="btn btn-secondary">Atualizar histórico</button>
+        </div>
+        <div class="table-wrap">
+          <table class="history-table">
+            <thead><tr><th>Data da grade</th><th>Disponibilizadas</th><th>Utilizadas</th><th>Disponíveis</th><th>Ocupação</th><th>Última coleta (Brasília)</th></tr></thead>
+            <tbody id="dailyHistoryBody"></tbody>
+          </table>
+          <div id="dailyHistoryEmpty" class="empty-state">Carregando histórico…</div>
+        </div>
       </div>
-      <div class="table-wrap" style="margin-bottom:24px">
-        <table class="history-table" style="min-width:900px">
-          <thead><tr><th>Data da grade</th><th>Disponibilizadas</th><th>Utilizadas</th><th>Disponíveis</th><th>Ocupação</th><th>Última coleta (Brasília)</th></tr></thead>
-          <tbody id="dailyHistoryBody"></tbody>
-        </table>
-        <div id="dailyHistoryEmpty" class="empty-state">Carregando histórico...</div>
-      </div>
-      <div class="section-card">
-        <div class="section-label">Histórico da Grade</div>
-        <div class="section-title">Comparação entre coletas</div>
-        <div class="section-subtitle">A comparação considera as janelas utilizadas por faixa horária.</div>
 
-        <div class="history-controls" style="margin-top:16px">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Comparação entre coletas</h2>
+            <p class="muted">A comparação considera as janelas utilizadas por faixa horária.</p>
+          </div>
+        </div>
+        <div class="toolbar">
           <div class="field">
             <label for="historyDate">Data da grade</label>
             <select id="historyDate"></select>
@@ -451,40 +474,26 @@ tr:hover td:first-child{background:#f8fafc}
             <select id="historyCompare"></select>
           </div>
         </div>
-
-        <div class="history-summary">
-          <div class="summary-box">
-            <div class="card-label">Utilizadas na base</div>
-            <div id="historyTotalBase" class="summary-value">-</div>
-          </div>
-          <div class="summary-box">
-            <div class="card-label">Utilizadas na comparação</div>
-            <div id="historyTotalCompare" class="summary-value">-</div>
-          </div>
-          <div class="summary-box">
-            <div class="card-label">Variação</div>
-            <div id="historyDelta" class="summary-value">-</div>
-          </div>
-          <div class="summary-box">
-            <div class="card-label">Intervalo</div>
-            <div id="historyInterval" class="summary-value">-</div>
-          </div>
+        <dl class="figures figures-4">
+          <div><dt>Utilizadas na base</dt><dd id="historyTotalBase" class="summary-value">-</dd></div>
+          <div><dt>Utilizadas na comparação</dt><dd id="historyTotalCompare" class="summary-value">-</dd></div>
+          <div><dt>Variação</dt><dd id="historyDelta" class="summary-value">-</dd></div>
+          <div><dt>Intervalo</dt><dd id="historyInterval" class="summary-value">-</dd></div>
+        </dl>
+        <div class="table-wrap">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>Horário</th>
+                <th>Utilizadas base</th>
+                <th>Utilizadas comparação</th>
+                <th>Variação</th>
+              </tr>
+            </thead>
+            <tbody id="historyBody"></tbody>
+          </table>
+          <div id="historyEmpty" class="empty-state hidden">Não há coletas suficientes para comparar esta data.</div>
         </div>
-      </div>
-
-      <div class="table-wrap">
-        <table class="history-table">
-          <thead>
-            <tr>
-              <th>Horário</th>
-              <th>Utilizadas base</th>
-              <th>Utilizadas comparação</th>
-              <th>Variação</th>
-            </tr>
-          </thead>
-          <tbody id="historyBody"></tbody>
-        </table>
-        <div id="historyEmpty" class="empty-state hidden">Não há coletas suficientes para comparar esta data.</div>
       </div>
     </section>
   </main>
@@ -521,23 +530,14 @@ tr:hover td:first-child{background:#f8fafc}
 </script>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
-import { getDatabase, ref, onValue, get } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-database.js";
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDhT2vV3ThNIkCIhUR6D_-7hTnbGejFgqo",
-  authDomain: "jbs-controlegrade.firebaseapp.com",
-  databaseURL: "https://jbs-controlegrade-default-rtdb.firebaseio.com",
-  projectId: "jbs-controlegrade",
-  storageBucket: "jbs-controlegrade.firebasestorage.app",
-  messagingSenderId: "261111959651",
-  appId: "1:261111959651:web:f8f8f366ff6b9bd5c46856"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getDatabase(app);
+// Mesmo projeto Supabase do Controle de Gates (navios/). A chave publicável é pública por natureza;
+// quem protege os dados são as políticas RLS de supabase/grade-agendamento.sql.
+const SUPABASE_URL = "https://nlapdztthgpxrlltyzaw.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_Td_jm53MclXAygs9BE4eSA_jvy35ZNa";
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let usuarioAtual = null;
 // Após a publicação, este endereço pode ser preenchido para todos os usuários.
 const DEFAULT_TRIGGER_URL = "https://controle-grade-gatilho.bruno-sth.workers.dev/atualizar";
 const endpointKey = "controleGradeTriggerCloudflareV1";
@@ -556,7 +556,9 @@ async function triggerGrade() {
   try { endpoint = normalizarEndpoint(endpointSalvo()); }
   catch { document.getElementById("triggerSettings").classList.remove("hidden"); throw Object.assign(new Error("Configure o endereço do serviço de atualização."), {code:"not-configured"}); }
   const baseline = dadosGradeAtual?.coletadoEm || null;
-  const idToken = await auth.currentUser.getIdToken();
+  const {data:{session}} = await supabase.auth.getSession();
+  if (!session) throw Object.assign(new Error("Sessão expirada."), {code:"unauthenticated"});
+  const idToken = session.access_token;
   const response = await fetch(endpoint, {method:"POST",headers:{Authorization:"Bearer " + idToken,"Content-Type":"application/json"},body:JSON.stringify({baseline}),signal:AbortSignal.timeout(60000),redirect:"error"});
   const data = await response.json();
   if (!response.ok) throw Object.assign(new Error(data.message || "Não foi possível solicitar a atualização."), {code:data.error});
@@ -589,16 +591,16 @@ function encerrarEsperaAtualizacao(message) {
   updateNowStatus.textContent = message;
 }
 updateNowButton.addEventListener("click", async () => {
-  if (!auth.currentUser) return;
+  if (!usuarioAtual) return;
   const generation = ++updateGeneration;
   updateNowButton.disabled = true;
-  updateNowButton.textContent = "Solicitando...";
-  updateNowStatus.textContent = "Solicitando atualização da grade...";
+  updateNowButton.textContent = "Solicitando…";
+  updateNowStatus.textContent = "Solicitando atualização da grade…";
   try {
     const response = await triggerGrade();
     if (generation !== updateGeneration) return;
     pendingGrade = {baseline:response.data.baseline};
-    updateNowButton.textContent = "Aguardando coleta...";
+    updateNowButton.textContent = "Aguardando coleta…";
     updateNowStatus.textContent = response.data.status === "running"
       ? "Já existe uma execução em andamento. Aguardando uma nova coleta."
       : "Solicitação aceita pelo GitHub Actions. Aguardando uma nova coleta.";
@@ -640,11 +642,11 @@ let snapshotsHistorico = [];
 loginButton.addEventListener("click", async () => {
   loginError.textContent = "";
   try {
-    await signInWithEmailAndPassword(
-      auth,
-      document.getElementById("email").value.trim(),
-      document.getElementById("password").value
-    );
+    const {error} = await supabase.auth.signInWithPassword({
+      email: document.getElementById("email").value.trim(),
+      password: document.getElementById("password").value
+    });
+    if (error) throw error;
   } catch (error) {
     console.error(error);
     loginError.textContent = "Não foi possível realizar o login.";
@@ -653,7 +655,7 @@ loginButton.addEventListener("click", async () => {
 document.getElementById("password").addEventListener("keydown", e => {
   if (e.key === "Enter") loginButton.click();
 });
-logoutButton.addEventListener("click", () => signOut(auth));
+logoutButton.addEventListener("click", () => supabase.auth.signOut());
 
 tabAtual.addEventListener("click", () => ativarAba("atual"));
 tabHistorico.addEventListener("click", async () => {
@@ -665,7 +667,17 @@ document.getElementById("historyDate").addEventListener("change", preencherColet
 document.getElementById("historyBase").addEventListener("change", renderizarComparacaoHistorico);
 document.getElementById("historyCompare").addEventListener("change", renderizarComparacaoHistorico);
 
-onAuthStateChanged(auth, user => {
+// A renovação do token repete o evento; só reage quando o usuário muda.
+// setTimeout evita chamar o Supabase de dentro do próprio aviso de login.
+let uidAnterior;
+supabase.auth.onAuthStateChange((_evento, sessao) => {
+  const user = sessao?.user || null;
+  usuarioAtual = user;
+  if ((user?.id ?? null) === uidAnterior) return;
+  uidAnterior = user?.id ?? null;
+  setTimeout(() => aoMudarUsuario(user), 0);
+});
+function aoMudarUsuario(user) {
   if (user) {
     loginView.classList.add("hidden");
     appView.classList.remove("hidden");
@@ -682,7 +694,7 @@ onAuthStateChanged(auth, user => {
       unsubscribeGrade = null;
     }
   }
-});
+}
 
 function ativarAba(aba) {
   const historico = aba === "historico";
@@ -690,12 +702,19 @@ function ativarAba(aba) {
   viewHistorico.classList.toggle("hidden", !historico);
   tabAtual.classList.toggle("active", !historico);
   tabHistorico.classList.toggle("active", historico);
+  tabAtual.setAttribute("aria-selected", String(!historico));
+  tabHistorico.setAttribute("aria-selected", String(historico));
 }
 
+// A grade atual é uma linha só (id = 1) em grade_atual; o coletor a substitui a cada coleta.
+async function lerGradeAtual() {
+  const {data, error} = await supabase.from("grade_atual").select("dados").eq("id", 1).maybeSingle();
+  if (error) throw error;
+  return data?.dados || null;
+}
 function iniciarGrade() {
   if (unsubscribeGrade) unsubscribeGrade();
-  unsubscribeGrade = onValue(ref(db, "gradeAtual"), snapshot => {
-    const dados = snapshot.val();
+  const aoReceber = dados => {
     if (dados) {
       renderizarGrade(dados);
       if (pendingGrade && (!pendingGrade.baseline || Date.parse(dados.coletadoEm) > Date.parse(pendingGrade.baseline))) {
@@ -706,7 +725,14 @@ function iniciarGrade() {
         });
       }
     }
-  }, error => console.error("Erro ao ler gradeAtual:", error));
+  };
+  const recarregar = () => lerGradeAtual().then(aoReceber).catch(error => console.error("Erro ao ler grade_atual:", error));
+  const canal = supabase.channel("grade-atual")
+    .on("postgres_changes", {event:"*", schema:"public", table:"grade_atual"}, recarregar)
+    // Ao (re)conectar, relê para não perder uma coleta feita enquanto estava desconectado.
+    .subscribe(status => { if (status === "SUBSCRIBED") recarregar(); });
+  recarregar();
+  unsubscribeGrade = () => supabase.removeChannel(canal);
 }
 
 function dataHojeBrasil() {
@@ -783,9 +809,12 @@ function montarSeletorDias(dados) {
     if (!data) continue;
 
     const button = document.createElement("button");
+    button.type = "button";
     button.className = "day-button";
     if (dia === diaSelecionado) button.classList.add("active");
     if (data === hoje) button.classList.add("today");
+    button.setAttribute("aria-pressed", String(dia === diaSelecionado));
+    if (data === hoje) button.setAttribute("aria-label", `${dia}, ${formatarDataCurta(data)}, hoje`);
 
     button.innerHTML =
       `<span class="day-button-name">${dia}</span>` +
@@ -977,21 +1006,24 @@ function renderizarGrade(dados) {
 
 /* HISTÓRICO */
 async function carregarHistorico() {
-  const snap = await get(ref(db, "historicoGrade"));
-  const bruto = snap.val() || {};
-  const lista = [];
-
-  for (const [dataColeta, horas] of Object.entries(bruto)) {
-    for (const [horaChave, dados] of Object.entries(horas || {})) {
-      lista.push({
-        id:`${dataColeta}/${horaChave}`,
-        dataColeta,
-        horaChave,
-        coletadoEm:dados.coletadoEm,
-        dados
-      });
-    }
+  // O Supabase devolve no máximo 1000 linhas por consulta; busca em páginas.
+  const linhas = [];
+  for (let de = 0; ; de += 1000) {
+    const {data, error} = await supabase.from("historico_grade")
+      .select("data_coleta,hora_chave,coletado_em,dados")
+      .order("coletado_em", {ascending:true})
+      .range(de, de + 999);
+    if (error) throw error;
+    linhas.push(...data);
+    if (data.length < 1000) break;
   }
+  const lista = linhas.map(l => ({
+    id:`${l.data_coleta}/${l.hora_chave}`,
+    dataColeta:l.data_coleta,
+    horaChave:l.hora_chave,
+    coletadoEm:l.dados?.coletadoEm || l.coletado_em,
+    dados:l.dados
+  }));
 
   lista.sort((a,b) => new Date(a.coletadoEm)-new Date(b.coletadoEm));
   snapshotsHistorico = lista;
@@ -1054,7 +1086,7 @@ function renderizarHistoricoDiario() {
     const valores = [formatarDataCompleta(linha.data), numero(linha.disponibilizadas), numero(linha.utilizadas), numero(linha.disponiveis), ocupacao, formatarDataHora(linha.snapshot.coletadoEm)];
     for (const [i,valor] of valores.entries()) {
       const td = document.createElement("td");td.textContent = valor;
-      if (i === 3 && linha.disponiveis !== null && linha.disponibilizadas > 0) td.style.color = linha.disponiveis > 0 ? "#15803d" : "#b91c1c";
+      if (i === 3 && linha.disponiveis !== null && linha.disponibilizadas > 0) td.classList.add(linha.disponiveis > 0 ? "avail-ok" : "avail-none");
       tr.appendChild(td);
     }
     body.appendChild(tr);
