@@ -169,7 +169,8 @@ p{margin:0;text-wrap:pretty}
 .brand-text{padding-left:var(--space-sm);border-left:1px solid var(--color-bar-rule);min-width:0}
 .brand h1{font-size:var(--text-lg);color:var(--color-bar-ink)}
 .brand small{display:block;font-size:var(--text-xs);color:var(--color-bar-muted)}
-.tabs{display:flex;align-self:stretch;overflow-x:auto;scrollbar-width:none}
+.tabs{display:flex;gap:var(--space-2xs);align-self:stretch;overflow-x:auto;scrollbar-width:none}
+a.nav-tab{text-decoration:none}
 .tablist{display:flex;gap:var(--space-2xs)}
 .nav-tab{
   display:inline-flex;align-items:center;border:0;background:transparent;color:var(--color-bar-muted);padding:0 var(--space-md);
@@ -365,6 +366,7 @@ td.avail-none{color:var(--color-full-ink);font-weight:600}
           <button id="tabAtual" type="button" class="nav-tab active" role="tab" aria-selected="true" aria-controls="viewAtual">Visão Atual</button>
           <button id="tabHistorico" type="button" class="nav-tab" role="tab" aria-selected="false" aria-controls="viewHistorico">Histórico</button>
         </div>
+        <a class="nav-tab" href="https://brunosth-rgb.github.io/jbs-grade-collector/navios" target="_blank" rel="noopener" aria-label="Abertura de Gates (abre em nova aba)">Abertura de Gates</a>
       </nav>
       <div class="header-actions">
         <button type="button" class="btn btn-secondary theme-toggle">Modo escuro</button>
