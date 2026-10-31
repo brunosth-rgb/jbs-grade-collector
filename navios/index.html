@@ -3,369 +3,558 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Controle de Grade, módulo Navios: abertura e fechamento dos Gates VIP, Reefer e Dry por escala, com histórico compartilhado.">
 <title>Controle de Grade - Navios v30</title>
 <script>
 try{document.documentElement.dataset.theme=localStorage.getItem("controleGrade_theme_v1")==="light"?"light":"dark";}catch{document.documentElement.dataset.theme="dark";}
 </script>
 <style>
-*{box-sizing:border-box}
+/* Hallmark · shape: app screen · genre: modern-minimal · theme: brand · redesign: full
+ * paper: oklch(97.5% 0.006 278) · accent: oklch(36% 0.15 276) · display: system-ui · body: system-ui
+ * nav: kept top bar, the two tabs moved into it · signature: the gate grid, grouped under Gates, Prazos and Previsão · states: loading, empty, filtered-empty, error, full
+ * axes: light/grotesk-sans/chromatic-indigo · posture: restrained · contrast: pass · v2.0.0 */
+/* Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V3 · weakest: H, fourteen flat columns competed; grouped them under three heads and moved the DDL countdown out of the three gate cells into the DDL Dry column */
+/* Hallmark · reworded "Nenhum CSV carregado" to "Nenhum navio carregado" · the data now comes from JSON, the old empty state lied */
+/* Hallmark · reworded "Alterações realizadas nesta versão local" to the eyebrow's own words, "Histórico de Gate" · the history is shared through the backend, not local */
+/* Hallmark · dismissed F4 · .gate-btn.open is the lime state of a gate toggle in the grid, not a second primary action; Atualizar dados stays the one filled button */
+
 :root{
-  --navy:#14143c;
-  --blue:#232378;
-  --green:#91d700;
-  --green-dark:#166534;
-  --green-soft:#ecfdf5;
-  --red:#b91c1c;
-  --red-soft:#fff1f2;
-  --amber:#b45309;
-  --amber-soft:#fffbeb;
-  --bg:#f4f6f8;
-  --card:#fff;
-  --border:#e5e7eb;
-  --muted:#6b7280;
-  --text:#1f2937;
-  --soft:#f8fafc;
-  --info:#005abe;
-}
-body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
-button,input,select{font:inherit}
-button{cursor:pointer}
-.hidden{display:none!important}
+  color-scheme:light;
+  --space-3xs:2px;--space-2xs:4px;--space-xs:8px;--space-sm:12px;--space-md:16px;--space-lg:24px;--space-xl:40px;--space-2xl:64px;
+  --text-xs:0.75rem;--text-sm:0.875rem;--text-md:1rem;--text-lg:1.125rem;--text-xl:1.35rem;--text-2xl:1.6rem;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);--ease-in:cubic-bezier(0.7,0,0.84,0);
+  --dur-micro:120ms;--dur-short:220ms;
+  --z-raised:10;--z-sticky:200;--z-modal:400;--z-toast:500;
+  --container:1720px;--gutter:24px;
+  --radius-panel:8px;--radius-control:6px;--radius-pill:999px;
+  --col-service:88px;--head-row:36px;
 
-header{
-  position:sticky;top:0;z-index:40;background:var(--navy);color:#fff;
-  padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px;
-  box-shadow:0 2px 10px rgba(0,0,0,.13)
-}
-.brand{display:flex;align-items:center;gap:12px}
-.brand-mark{width:34px;height:34px;border-radius:8px;background:var(--green);display:grid;place-items:center;color:var(--navy);font-weight:900}
-.brand h1{font-size:19px;margin:0}
-.brand small{display:block;opacity:.72;margin-top:2px}
-.header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.btn{
-  border:0;border-radius:8px;padding:9px 13px;font-weight:800;
-}
-.btn-primary{background:var(--blue);color:#fff}
-.btn-secondary{background:#fff;color:var(--navy)}
-.btn-ghost{background:#eef0ff;color:var(--blue)}
-.btn-danger{background:#fff1f2;color:var(--red);border:1px solid #fecdd3}
-.btn:disabled{opacity:.55;cursor:not-allowed}
+  --font-body:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",sans-serif;
+  --font-display:"Segoe UI Variable Display","Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",sans-serif;
 
-main{max-width:1720px;margin:0 auto;padding:18px 18px 32px}
-.tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
-.tab{border:1px solid #dfe3e8;background:#fff;color:#374151;padding:9px 16px;border-radius:8px;font-weight:800}
-.tab.active{background:var(--blue);border-color:var(--blue);color:#fff}
+  --color-paper:oklch(97.5% 0.006 278);
+  --color-paper-2:oklch(95% 0.01 278);
+  --color-paper-3:oklch(91.5% 0.014 278);
+  --color-surface:oklch(99.3% 0.003 278);
+  --color-ink:oklch(22% 0.05 278);
+  --color-ink-2:oklch(36% 0.04 278);
+  --color-muted:oklch(47% 0.03 278);
+  --color-rule:oklch(89.5% 0.014 278);
+  --color-rule-strong:oklch(80% 0.02 278);
+  --color-accent:oklch(36% 0.15 276);
+  --color-accent-hover:oklch(31% 0.15 276);
+  --color-accent-ink:oklch(98% 0.008 278);
+  --color-focus:oklch(45% 0.2 276);
 
-.upload-card{
-  background:#fff;border:1px dashed #a5b4fc;border-radius:12px;padding:16px;margin-bottom:14px;
-  display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap
-}
-.upload-left{display:flex;align-items:center;gap:12px}
-.upload-icon{width:42px;height:42px;border-radius:10px;background:#eef2ff;display:grid;place-items:center;color:var(--blue);font-size:20px}
-.upload-title{font-weight:900;color:var(--navy)}
-.upload-sub{font-size:12px;color:var(--muted);margin-top:3px}
-.file-input{display:none}
+  --color-bar:oklch(21% 0.075 278);
+  --color-bar-ink:oklch(96% 0.01 278);
+  --color-bar-muted:oklch(78% 0.03 278);
+  --color-bar-rule:oklch(36% 0.07 278);
+  --color-bar-hover:oklch(27% 0.08 278);
+  --color-signal:oklch(80% 0.2 128);
+  --color-signal-ink:oklch(21% 0.075 278);
 
-.cards{
-  display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:14px
-}
-.card{background:#fff;border-radius:10px;padding:12px 14px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
-.card-label{font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:5px}
-.card-value{font-size:21px;font-weight:900;color:var(--navy)}
-.card-sub{font-size:11px;color:var(--muted);margin-top:4px}
+  --color-open:oklch(92% 0.1 128);
+  --color-open-ink:oklch(36% 0.1 135);
+  --color-open-rule:oklch(78% 0.16 128);
+  --color-error:oklch(50% 0.19 27);
+  --color-error-soft:oklch(96% 0.025 20);
+  --color-error-rule:oklch(80% 0.08 20);
+  --color-warn:oklch(58% 0.17 50);
+  --color-ok:oklch(47% 0.13 145);
 
-.toolbar{
-  background:#fff;border-radius:10px;padding:12px;display:grid;
-  grid-template-columns:1.4fr .8fr .8fr .8fr auto;gap:10px;align-items:end;margin-bottom:14px;
-  box-shadow:0 2px 8px rgba(0,0,0,.05)
+  --color-logo-chip:oklch(98.5% 0.004 278);
+  --color-scrim:oklch(18% 0.04 278 / 0.5);
+  --shadow-pop:0 12px 32px oklch(20% 0.04 278 / 0.18);
 }
-.field label{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:800;margin-bottom:5px}
-.field input,.field select{
-  width:100%;padding:9px 10px;border:1px solid #d1d5db;border-radius:7px;background:#fff
-}
-
-.table-shell{
-  background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.05);
-  overflow:auto;max-height:calc(100vh - 300px)
-}
-table{border-collapse:separate;border-spacing:0;width:100%;min-width:1680px}
-thead th{
-  position:sticky;top:0;z-index:10;background:var(--blue);color:#fff;
-  padding:10px 8px;font-size:11px;text-align:center;white-space:nowrap;border-right:1px solid rgba(255,255,255,.08)
-}
-tbody td{
-  padding:8px 7px;border-bottom:1px solid var(--border);font-size:12px;text-align:center;background:#fff;white-space:nowrap
-}
-tbody tr:hover td{background:#f8fafc}
-th.sticky,td.sticky{position:sticky;left:0;z-index:12}
-th.sticky{background:var(--blue)}
-td.sticky{background:#fff;text-align:left;font-weight:900;color:var(--navy)}
-tbody tr:hover td.sticky{background:#f8fafc}
-th.sticky2,td.sticky2{position:sticky;left:72px;z-index:11}
-th.sticky2{background:var(--blue)}
-td.sticky2{background:#fff;text-align:left;font-weight:800}
-tbody tr:hover td.sticky2{background:#f8fafc}
-
-.phase-pill,.status-pill,.gate-btn{
-  display:inline-flex;align-items:center;justify-content:center;border-radius:999px;font-weight:900;font-size:10px
-}
-.phase-pill{padding:4px 8px;background:#eef2ff;color:var(--blue)}
-.gate-btn{
-  min-width:76px;border:1px solid transparent;padding:7px 10px;transition:.12s ease
-}
-.gate-btn.closed{background:var(--red-soft);color:var(--red);border-color:#fecdd3}
-.gate-btn.open{background:var(--green-soft);color:var(--green-dark);border-color:#bbf7d0}
-.gate-btn:hover{transform:translateY(-1px)}
-.gate-cell{display:flex;flex-direction:column;align-items:center;gap:4px}
-.gate-deadline{font-size:10px;font-weight:800;color:var(--muted);line-height:1.15}
-.gate-deadline.soon{color:var(--amber)}
-.gate-deadline.overdue{color:var(--red)}
-.gate-deadline.today{color:var(--amber)}
-.date-main{font-weight:800;color:#374151}
-.date-sub{font-size:10px;color:var(--muted);margin-top:2px}
-.date-overdue{color:var(--red)!important}
-.date-soon{color:var(--amber)!important}
-
-.empty{padding:42px 18px;text-align:center;color:var(--muted)}
-.empty strong{display:block;color:var(--navy);font-size:16px;margin-bottom:5px}
-
-.history-card{background:#fff;border-radius:10px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.05);margin-bottom:14px}
-.history-grid{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:10px}
-.history-table{min-width:1100px}
-.action-open{color:var(--green-dark);font-weight:900}
-.action-close{color:var(--red);font-weight:900}
-
-.toast{
-  position:fixed;right:18px;bottom:18px;z-index:100;max-width:380px;
-  background:var(--navy);color:#fff;border-radius:10px;padding:12px 14px;
-  box-shadow:0 10px 30px rgba(0,0,0,.2);font-size:13px
-}
-.modal-backdrop{
-  position:fixed;inset:0;background:rgba(15,23,42,.44);z-index:80;display:grid;place-items:center;padding:18px
-}
-.modal{background:#fff;border-radius:12px;padding:18px;width:min(480px,100%);box-shadow:0 20px 60px rgba(0,0,0,.25)}
-.modal h3{margin:0 0 8px;color:var(--navy)}
-.modal p{font-size:13px;color:#4b5563;line-height:1.5}
-.modal textarea{
-  width:100%;min-height:90px;resize:vertical;padding:10px 11px;border:1px solid #d1d5db;
-  border-radius:8px;font:inherit;margin-top:10px
-}
-.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
-
-.info-strip{
-  background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;border-radius:9px;padding:10px 12px;
-  font-size:12px;margin-bottom:14px
-}
-
-@media(max-width:1250px){
-  .cards{grid-template-columns:repeat(3,1fr)}
-  .toolbar{grid-template-columns:1fr 1fr 1fr}
-}
-@media(max-width:760px){
-  main{padding:12px}
-  .cards{grid-template-columns:repeat(2,1fr)}
-  .toolbar,.history-grid{grid-template-columns:1fr}
-  header{align-items:flex-start;flex-direction:column}
-  .cards .card{min-width:0}
-}
-@media(max-width:520px){
-  .cards{grid-template-columns:1fr}
-}
-
-:root{color-scheme:light}
 :root[data-theme="dark"]{
   color-scheme:dark;
-  --bg:#10151f;--card:#1a2230;--soft:#222d3d;--border:#354258;
-  --text:#e6edf7;--muted:#a9b7cc;--blue:#343f9c;
-  --green-dark:#8ce5ac;--green-soft:#17372a;
-  --red:#ffa5ad;--red-soft:#40232d;--amber:#ffd17a;--amber-soft:#403421;--info:#9ccaff;
-}
-[data-theme="dark"] .card,[data-theme="dark"] .toolbar,
-[data-theme="dark"] .history-card,[data-theme="dark"] .table-shell,
-[data-theme="dark"] .upload-card,[data-theme="dark"] .modal,
-[data-theme="dark"] #loginView{background:var(--card)!important}
-[data-theme="dark"] tbody td,[data-theme="dark"] td.sticky,
-[data-theme="dark"] td.sticky2{background:var(--card)}
-[data-theme="dark"] tbody tr:hover td{background:var(--soft)}
-[data-theme="dark"] .card-value,[data-theme="dark"] .upload-title,
-[data-theme="dark"] .empty strong,[data-theme="dark"] td.sticky,
-[data-theme="dark"] .modal h3,[data-theme="dark"] #loginView h2,
-[data-theme="dark"] .date-main,[data-theme="dark"] .modal p{color:var(--text)}
-[data-theme="dark"] input,[data-theme="dark"] select,[data-theme="dark"] textarea{
-  background:var(--bg);color:var(--text);border-color:var(--border)
-}
-[data-theme="dark"] .tab{background:var(--card);color:var(--text);border-color:var(--border)}
-[data-theme="dark"] .tab.active{background:var(--blue);color:#fff}
-[data-theme="dark"] .btn-secondary,[data-theme="dark"] .btn-ghost,
-[data-theme="dark"] .upload-icon,[data-theme="dark"] .phase-pill{background:#2a3555;color:#dce5ff}
-[data-theme="dark"] .btn-danger{background:var(--red-soft);color:var(--red);border-color:#79414d}
-[data-theme="dark"] .gate-btn.closed{border-color:#79414d}
-[data-theme="dark"] .gate-btn.open{border-color:#356c4c}
-[data-theme="dark"] .gate-deadline{color:var(--muted)}
-[data-theme="dark"] .gate-deadline.soon,
-[data-theme="dark"] .gate-deadline.today{color:var(--amber)}
-[data-theme="dark"] .gate-deadline.overdue{color:var(--red)}
-[data-theme="dark"] .info-strip{background:#1b2b45;border-color:#3a547d;color:#c2d9ff}
-[data-theme="dark"] .upload-card{border-color:#596895}
-button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #91d700;outline-offset:3px}
+  --color-paper:oklch(16% 0.02 278);
+  --color-paper-2:oklch(20% 0.024 278);
+  --color-paper-3:oklch(24.5% 0.03 278);
+  --color-surface:oklch(18% 0.022 278);
+  --color-ink:oklch(94% 0.012 278);
+  --color-ink-2:oklch(83% 0.02 278);
+  --color-muted:oklch(71% 0.03 278);
+  --color-rule:oklch(28% 0.03 278);
+  --color-rule-strong:oklch(38% 0.035 278);
+  --color-accent:oklch(82% 0.2 128);
+  --color-accent-hover:oklch(87% 0.19 128);
+  --color-accent-ink:oklch(20% 0.06 278);
+  --color-focus:oklch(84% 0.2 128);
 
+  --color-bar:oklch(21% 0.07 278);
+  --color-bar-rule:oklch(32% 0.06 278);
+
+  --color-open:oklch(33% 0.08 130);
+  --color-open-ink:oklch(89% 0.17 128);
+  --color-open-rule:oklch(48% 0.12 130);
+  --color-error:oklch(75% 0.13 22);
+  --color-error-soft:oklch(26% 0.05 20);
+  --color-error-rule:oklch(45% 0.1 22);
+  --color-warn:oklch(77% 0.16 58);
+  --color-ok:oklch(82% 0.16 138);
+
+  --color-logo-chip:oklch(94% 0.008 278);
+  --color-scrim:oklch(8% 0.02 278 / 0.6);
+  --shadow-pop:0 12px 32px oklch(5% 0.02 278 / 0.5);
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html,body{overflow-x:clip}
+body{margin:0;background:var(--color-paper);color:var(--color-ink);font-family:var(--font-body);font-size:var(--text-md);line-height:1.5;-webkit-font-smoothing:antialiased}
+::selection{background:color-mix(in oklab,var(--color-focus) 24%,transparent)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+h1,h2{margin:0;font-family:var(--font-display);font-weight:600;letter-spacing:-0.01em;line-height:1.15;text-wrap:balance;overflow-wrap:break-word;min-width:0}
+p{margin:0;text-wrap:pretty}
+.hidden,[hidden]{display:none!important}
+html{scrollbar-color:var(--color-rule-strong) var(--color-paper)}
+body{caret-color:var(--color-focus)}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.num{font-variant-numeric:tabular-nums}
+:focus-visible{outline:2px solid var(--color-focus);outline-offset:2px}
+
+/* Controls */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:var(--space-xs);
+  min-height:36px;padding:0 var(--space-md);border:1px solid transparent;border-radius:var(--radius-control);
+  background:transparent;color:var(--color-ink);font-size:var(--text-sm);font-weight:600;line-height:1;white-space:nowrap;
+  transition:background-color var(--dur-micro) var(--ease-out),border-color var(--dur-micro) var(--ease-out),color var(--dur-micro) var(--ease-out),transform var(--dur-micro) var(--ease-out)
+}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible{outline:2px solid var(--color-focus);outline-offset:2px}
+.btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.btn-primary{background:var(--color-accent);color:var(--color-accent-ink)}
+.btn-primary:hover:not(:disabled){background:var(--color-accent-hover)}
+.btn-secondary,.btn-ghost{border-color:var(--color-rule-strong)}
+.btn-secondary:hover:not(:disabled),.btn-ghost:hover:not(:disabled){background:var(--color-paper-2)}
+.btn-danger{color:var(--color-error);border-color:var(--color-error-rule)}
+.btn-danger:hover:not(:disabled){background:var(--color-error-soft)}
+.btn-block{width:100%}
+@media (pointer:coarse){.btn{min-height:44px}}
+
+.field{display:flex;flex-direction:column;gap:var(--space-2xs);min-width:0}
+.field label,.field>span{font-size:var(--text-sm);color:var(--color-muted)}
+.field input,.field select,.modal textarea{
+  width:100%;min-height:36px;padding:0 var(--space-sm);border:1px solid var(--color-rule-strong);border-radius:var(--radius-control);
+  background:var(--color-surface);color:var(--color-ink);font-size:var(--text-sm);
+  transition:border-color var(--dur-micro) var(--ease-out)
+}
+.field input:hover,.field select:hover,.modal textarea:hover{border-color:var(--color-muted)}
+.field input:focus-visible,.field select:focus-visible,.modal textarea:focus-visible{outline:2px solid var(--color-focus);outline-offset:-1px}
+.field input:disabled,.modal textarea:disabled{opacity:.55;cursor:not-allowed}
+.field input::placeholder,.modal textarea::placeholder{color:var(--color-muted)}
+
+/* Sign-in */
+.login{min-height:100dvh;display:grid;place-items:center;padding:var(--space-lg) var(--space-md)}
+.login-panel{
+  width:min(380px,100%);display:flex;flex-direction:column;gap:var(--space-md);
+  padding:var(--space-xl) var(--space-lg);background:var(--color-surface);color:var(--color-ink);border:1px solid var(--color-rule);border-radius:var(--radius-panel)
+}
+.login-panel h2{font-size:var(--text-2xl)}
+.login-panel p{font-size:var(--text-sm);color:var(--color-muted)}
+.login-panel .field input{min-height:40px;font-size:var(--text-md)}
+.login-error{min-height:1lh;font-size:var(--text-sm);color:var(--color-error)}
+.login-panel .brand-mark{margin-bottom:var(--space-xs)}
+
+/* Top bar */
+.bar{background:var(--color-bar);color:var(--color-bar-ink)}
+.bar-inner{
+  max-width:var(--container);margin:0 auto;padding:0 var(--gutter);min-height:60px;
+  display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:var(--space-lg)
+}
+.brand{display:flex;align-items:center;gap:var(--space-sm);min-width:0}
+.brand-mark{
+  flex-shrink:0;width:32px;height:32px;border-radius:var(--radius-control);
+  background:var(--color-signal);color:var(--color-signal-ink);display:grid;place-items:center;font-weight:700
+}
+.brand h1{font-size:var(--text-lg);color:var(--color-bar-ink)}
+.brand small{display:block;font-size:var(--text-xs);color:var(--color-bar-muted)}
+.tabs{display:flex;gap:var(--space-2xs);align-self:stretch;overflow-x:auto;scrollbar-width:none}
+.tab{
+  border:0;background:transparent;color:var(--color-bar-muted);padding:0 var(--space-md);
+  font-size:var(--text-sm);font-weight:600;white-space:nowrap;box-shadow:inset 0 -2px 0 transparent;
+  transition:color var(--dur-micro) var(--ease-out),background-color var(--dur-micro) var(--ease-out),box-shadow var(--dur-micro) var(--ease-out)
+}
+.tab:hover{color:var(--color-bar-ink);background:var(--color-bar-hover)}
+.tab:active{background:var(--color-bar-rule)}
+.tab:focus-visible{outline:2px solid var(--color-signal);outline-offset:-4px}
+.tab.active{color:var(--color-bar-ink);box-shadow:inset 0 -2px 0 var(--color-signal)}
+.header-actions{display:flex;align-items:center;gap:var(--space-xs);min-width:0}
+.header-actions .user{font-size:var(--text-sm);color:var(--color-bar-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:24ch}
+.bar .btn{color:var(--color-bar-ink);border-color:var(--color-bar-rule)}
+.bar .btn:hover{background:var(--color-bar-hover)}
+.bar .btn:focus-visible{outline-color:var(--color-signal)}
+
+/* Page */
+main{max-width:var(--container);margin:0 auto;padding:var(--space-lg) var(--gutter) var(--space-xl)}
+.view{display:flex;flex-direction:column;gap:var(--space-lg)}
+
+.figures{margin:0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr))}
+.figures>div{padding:0 var(--space-lg);border-left:1px solid var(--color-rule);min-width:0}
+.figures>div:first-child{padding-left:0;border-left:0}
+.figures>div:last-child{padding-right:0}
+.figures dt{font-size:var(--text-sm);color:var(--color-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.figures dd{margin:0}
+.figure{font-size:var(--text-2xl);font-weight:600;line-height:1.2;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.figure-text{font-size:var(--text-lg);line-height:1.6}
+.figure-sub{font-size:var(--text-xs);color:var(--color-muted);font-variant-numeric:tabular-nums}
+
+.source{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-md);padding-top:var(--space-md);border-top:1px solid var(--color-rule)}
+.source-text{display:flex;flex-direction:column;gap:var(--space-2xs);min-width:0;font-size:var(--text-sm)}
+.source-text strong{font-weight:600}
+.source-status{color:var(--color-muted)}
+.sync{display:flex;flex-wrap:wrap;column-gap:var(--space-md);row-gap:var(--space-3xs);color:var(--color-muted)}
+.sync.is-error{color:var(--color-error)}
+.source details{color:var(--color-muted);max-width:90ch}
+.source summary{cursor:pointer;width:fit-content;color:var(--color-ink-2);border-radius:var(--radius-control)}
+.source summary:hover{color:var(--color-ink)}
+.source details p{margin-top:var(--space-xs)}
+.source-actions{display:flex;gap:var(--space-xs);flex-shrink:0}
+
+.panel{background:var(--color-surface);color:var(--color-ink);border:1px solid var(--color-rule);border-radius:var(--radius-panel);overflow:hidden}
+.toolbar{
+  display:grid;grid-template-columns:minmax(0,1.6fr) repeat(3,minmax(0,1fr)) auto auto;gap:var(--space-sm);align-items:end;
+  padding:var(--space-md);border-bottom:1px solid var(--color-rule);background:var(--color-paper-2)
+}
+.toolbar-history{grid-template-columns:minmax(0,1.6fr) repeat(2,minmax(0,1fr))}
+
+.table-shell{overflow:auto;max-height:calc(100dvh - 320px);min-height:280px;background:var(--color-surface)}
+table{border-collapse:separate;border-spacing:0;width:100%;min-width:1320px;font-size:var(--text-sm);font-variant-numeric:tabular-nums}
+.history-table{min-width:1100px}
+thead th{
+  position:sticky;top:0;z-index:var(--z-raised);height:var(--head-row);padding:0 var(--space-xs);
+  background:var(--color-paper-2);color:var(--color-ink-2);font-weight:600;text-align:left;white-space:nowrap;
+  border-bottom:1px solid var(--color-rule)
+}
+thead tr.sub th{top:var(--head-row)}
+thead th.group{text-align:center;color:var(--color-muted);font-weight:400;border-bottom:1px solid var(--color-rule)}
+thead th.group+th.group,thead th.edge,tbody td.edge{border-left:1px solid var(--color-rule)}
+tbody td{padding:var(--space-xs);border-bottom:1px solid var(--color-rule);background:var(--color-surface);white-space:nowrap;vertical-align:middle;transition:background-color var(--dur-micro) var(--ease-out)}
+tbody tr:last-child td{border-bottom:0}
+thead tr:first-child th:first-child,tbody td:first-child{padding-left:var(--space-md)}
+thead tr:first-child th:last-child,thead tr.sub th:last-child,tbody td:last-child{padding-right:var(--space-md)}
+tbody tr:hover td{background:var(--color-paper-2)}
+th.sticky,td.sticky{position:sticky;left:0;z-index:calc(var(--z-raised) + 2);min-width:var(--col-service)}
+th.sticky2,td.sticky2{position:sticky;left:var(--col-service);z-index:calc(var(--z-raised) + 1);min-width:180px;box-shadow:1px 0 0 var(--color-rule)}
+thead th.sticky,thead th.sticky2{z-index:calc(var(--z-raised) + 3)}
+td.sticky{color:var(--color-muted)}
+td.sticky2{font-weight:600}
+.vessel-btn{
+  display:inline-flex;align-items:center;gap:var(--space-xs);min-height:28px;padding:0;border:0;background:transparent;
+  color:var(--color-ink);font-weight:600;text-align:left;border-radius:var(--radius-control);
+  text-decoration:underline;text-decoration-color:transparent;text-underline-offset:0.2em;
+  transition:text-decoration-color var(--dur-micro) var(--ease-out)
+}
+.vessel-btn:hover{text-decoration-color:var(--color-muted)}
+.vessel-btn:active{transform:translateY(1px)}
+.vessel-btn:focus-visible{outline:2px solid var(--color-focus);outline-offset:2px}
+.carrier-chip{
+  flex-shrink:0;display:inline-flex;align-items:center;height:22px;padding:var(--space-3xs) var(--space-2xs);
+  background:var(--color-logo-chip);border-radius:var(--space-2xs)
+}
+.carrier-logo{display:block;height:16px;width:auto;max-width:56px;object-fit:contain}
+.carrier-badge{
+  flex-shrink:0;padding:0 var(--space-2xs);border:1px solid var(--color-rule-strong);border-radius:var(--space-2xs);
+  color:var(--color-ink-2);font-size:var(--text-xs);font-weight:600;line-height:1.5
+}
+.modal-actions #armadorRemove{margin-right:auto}
+td.gate{text-align:center;padding-inline:var(--space-xs)}
+
+.gate-btn{
+  display:inline-flex;align-items:center;justify-content:center;min-width:76px;min-height:30px;padding:0 var(--space-sm);
+  border:1px solid var(--color-rule-strong);border-radius:var(--radius-pill);background:transparent;color:var(--color-muted);
+  font-size:var(--text-xs);font-weight:600;
+  transition:background-color var(--dur-micro) var(--ease-out),border-color var(--dur-micro) var(--ease-out),color var(--dur-micro) var(--ease-out),transform var(--dur-micro) var(--ease-out)
+}
+.gate-btn:hover{border-color:var(--color-ink-2);color:var(--color-ink)}
+.gate-btn:active{transform:translateY(1px)}
+.gate-btn:focus-visible{outline:2px solid var(--color-focus);outline-offset:2px}
+.gate-btn:disabled{opacity:.55;cursor:not-allowed}
+.gate-btn.open{background:var(--color-open);border-color:var(--color-open-rule);color:var(--color-open-ink)}
+.gate-btn.open:hover{border-color:var(--color-open-ink)}
+
+.date-main{color:var(--color-ink)}
+.date-sub,.gate-deadline{font-size:var(--text-xs);color:var(--color-muted);margin-top:var(--space-3xs)}
+.gate-deadline.today,.date-today{color:var(--color-warn)!important}
+.gate-deadline.today{font-weight:600}
+.date-ok{color:var(--color-ok)!important}
+.date-late{color:var(--color-error)!important}
+
+.empty{padding:var(--space-2xl) var(--space-md);text-align:center;color:var(--color-muted);font-size:var(--text-sm)}
+.empty strong{display:block;color:var(--color-ink);font-size:var(--text-md);font-weight:600;margin-bottom:var(--space-2xs)}
+
+.history-head{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--space-md);flex-wrap:wrap}
+.history-head h2{font-size:var(--text-xl)}
+.history-head p{font-size:var(--text-sm);color:var(--color-muted);margin-top:var(--space-2xs);max-width:70ch}
+.history-actions{display:flex;gap:var(--space-xs)}
+.action-open{color:var(--color-open-ink);font-weight:600}
+.action-close{color:var(--color-muted);font-weight:600}
+td.notes{white-space:normal;min-width:240px;max-width:420px}
+
+.toast{
+  position:fixed;right:var(--space-md);bottom:var(--space-md);z-index:var(--z-toast);max-width:380px;
+  background:var(--color-bar);color:var(--color-bar-ink);border-radius:var(--radius-panel);padding:var(--space-sm) var(--space-md);
+  box-shadow:var(--shadow-pop);font-size:var(--text-sm)
+}
+.modal-backdrop{position:fixed;inset:0;background:var(--color-scrim);z-index:var(--z-modal);display:grid;place-items:center;padding:var(--space-md)}
+.modal{
+  background:var(--color-surface);color:var(--color-ink);border-radius:var(--radius-panel);
+  padding:var(--space-lg);width:min(480px,100%);box-shadow:var(--shadow-pop);display:flex;flex-direction:column;gap:var(--space-sm)
+}
+.modal h2{font-size:var(--text-xl)}
+.modal p{font-size:var(--text-sm);color:var(--color-ink-2);line-height:1.55}
+.modal p strong{color:var(--color-ink);font-weight:600}
+.modal label{font-size:var(--text-sm);color:var(--color-muted);margin-top:var(--space-xs)}
+.modal textarea{min-height:96px;padding:var(--space-xs) var(--space-sm);resize:vertical;line-height:1.5}
+.modal-status{min-height:1lh;font-size:var(--text-sm);color:var(--color-muted)}
+.config-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-sm)}
+.config-grid .field label{margin-top:0}
+.modal-actions{display:flex;justify-content:flex-end;gap:var(--space-xs);margin-top:var(--space-xs)}
+
+@media (max-width:75rem){
+  .figures{grid-template-columns:repeat(3,minmax(0,1fr));row-gap:var(--space-md)}
+  .figures>div:nth-child(4){padding-left:0;border-left:0}
+  .toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .toolbar>.field:first-child{grid-column:1 / -1}
+  .toolbar>.btn{justify-self:start}
+}
+@media (max-width:60rem){
+  :root{--gutter:16px}
+  .bar-inner{grid-template-columns:minmax(0,1fr) auto;row-gap:0;padding-top:var(--space-xs)}
+  .tabs{grid-column:1 / -1;grid-row:2;min-height:44px}
+  .tab{padding:0 var(--space-sm)}
+  .header-actions .user{display:none}
+  .source{flex-direction:column}
+}
+@media (max-width:40rem){
+  .figures{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .figures>div{padding:0 var(--space-md)}
+  .figures>div:nth-child(4){padding-left:var(--space-md);border-left:1px solid var(--color-rule)}
+  .figures>div:nth-child(odd){padding-left:0;border-left:0}
+  .toolbar,.toolbar-history{grid-template-columns:minmax(0,1fr)}
+  .field input,.field select{font-size:var(--text-md);min-height:40px}
+  :root{--col-service:64px}
+  th.sticky2,td.sticky2{min-width:140px}
+  .table-shell{max-height:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition-duration:0.01ms!important;animation-duration:0.01ms!important}
+}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
-<div id="loginView" style="width:380px;max-width:calc(100% - 32px);margin:100px auto;padding:28px;background:#fff;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.08)">
-  <h2 style="margin:0 0 8px;color:var(--navy)">Controle de Grade</h2>
-  <p style="margin:0 0 22px;color:var(--muted);font-size:13px">Entre com seu usuário autorizado para acessar o módulo de Navios.</p>
-  <input id="loginEmail" type="email" placeholder="E-mail" autocomplete="username" style="width:100%;padding:11px 12px;border:1px solid #d1d5db;border-radius:7px;margin-bottom:12px">
-  <input id="loginPassword" type="password" placeholder="Senha" autocomplete="current-password" style="width:100%;padding:11px 12px;border:1px solid #d1d5db;border-radius:7px;margin-bottom:12px">
-  <button id="loginButton" class="btn btn-primary" style="width:100%">Entrar</button>
-  <button type="button" class="btn btn-ghost theme-toggle" style="margin-top:12px;width:100%" aria-label="Alternar modo escuro">Modo claro</button>
-  <div id="loginError" style="margin-top:10px;color:var(--red);font-size:13px"></div>
+<div id="loginView" class="login">
+  <div class="login-panel">
+    <div class="brand-mark" aria-hidden="true">G</div>
+    <h2>Controle de Grade</h2>
+    <p>Entre com seu usuário autorizado para acessar o módulo de Navios.</p>
+    <div class="field">
+      <label for="loginEmail">E-mail</label>
+      <input id="loginEmail" name="email" type="email" autocomplete="username" inputmode="email">
+    </div>
+    <div class="field">
+      <label for="loginPassword">Senha</label>
+      <input id="loginPassword" name="password" type="password" autocomplete="current-password">
+    </div>
+    <button id="loginButton" type="button" class="btn btn-primary btn-block">Entrar</button>
+    <div id="loginError" class="login-error" role="alert"></div>
+    <button type="button" class="btn btn-ghost btn-block theme-toggle" aria-label="Alternar modo escuro">Modo claro</button>
+  </div>
 </div>
 
 <div id="appView" class="hidden">
-<header>
-  <div class="brand">
-    <div class="brand-mark">G</div>
-    <div>
-      <h1>Controle de Grade</h1>
-      <small>Módulo Navios · integração JSON</small>
+<header class="bar">
+  <div class="bar-inner">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">G</div>
+      <div>
+        <h1>Controle de Grade</h1>
+        <small>Módulo Navios, integração JSON</small>
+      </div>
     </div>
-  </div>
-  <div class="header-actions">
-    <button type="button" class="btn btn-secondary theme-toggle" aria-label="Alternar modo escuro">Modo claro</button>
-    <span id="userEmail" style="font-size:12px;opacity:.85"></span>
-    <button id="clearLocalBtn" class="btn btn-danger">Limpar cache local</button>
-    <button id="logoutBtn" class="btn btn-secondary">Sair</button>
+    <nav class="tabs" role="tablist" aria-label="Seções">
+      <button id="tabNavios" type="button" class="tab active" role="tab" aria-selected="true" aria-controls="viewNavios">Navios</button>
+      <button id="tabHistorico" type="button" class="tab" role="tab" aria-selected="false" aria-controls="viewHistorico">Histórico de Gate</button>
+    </nav>
+    <div class="header-actions">
+      <span id="userEmail" class="user"></span>
+      <button type="button" class="btn btn-secondary theme-toggle" aria-label="Alternar modo escuro">Modo claro</button>
+      <button id="logoutBtn" type="button" class="btn btn-secondary">Sair</button>
+    </div>
   </div>
 </header>
 
 <main>
-  <div class="tabs">
-    <button id="tabNavios" class="tab active">Navios</button>
-    <button id="tabHistorico" class="tab">Histórico de Gate</button>
-  </div>
+  <section id="viewNavios" class="view" role="tabpanel" aria-labelledby="tabNavios">
+    <h2 class="visually-hidden">Navios</h2>
 
-  <section id="viewNavios">
-    <div class="upload-card">
-      <div class="upload-left">
-        <div class="upload-icon">↻</div>
-        <div>
-          <div class="upload-title">Dados automáticos de navios</div>
-          <div class="upload-sub">Fonte: navios/data/navios-latest.json publicado pelo Apps Script no GitHub. O carregamento ocorre automaticamente ao abrir a página.</div>
+    <dl class="figures">
+      <div><dt>Navios inbound</dt><dd id="countInbound" class="figure">0</dd><dd class="figure-sub">Visit Phase = I</dd></div>
+      <div><dt>Gate VIP abertos</dt><dd id="countVIP" class="figure">0</dd></div>
+      <div><dt>Gate Reefer abertos</dt><dd id="countReefer" class="figure">0</dd></div>
+      <div><dt>Gate Dry abertos</dt><dd id="countDry" class="figure">0</dd></div>
+      <div><dt>Próximo ETA</dt><dd id="nextEta" class="figure figure-text">-</dd><dd id="nextEtaDate" class="figure-sub"></dd></div>
+      <div><dt>Última atualização JSON</dt><dd id="lastJsonUpdate" class="figure figure-text">-</dd></div>
+    </dl>
+
+    <div class="source">
+      <div class="source-text">
+        <strong>Dados automáticos de navios</strong>
+        <span id="jsonSourceInfo" class="source-status"></span>
+        <span id="sharedSyncInfo" class="sync" role="status">v30: aguardando login e leitura dos dados compartilhados…</span>
+        <details>
+          <summary>Como os dados chegam aqui</summary>
+          <p>Fonte: navios/data/navios-latest.json publicado pelo Apps Script no GitHub. O carregamento ocorre automaticamente ao abrir a página.</p>
+          <p>ETA, deadlines e primeiro ETA vêm do JSON automático. Os status dos Gates e o histórico são compartilhados pelo Supabase entre os usuários autenticados e atualizados em tempo real. Este navegador mantém apenas o cache dos navios e do primeiro ETA.</p>
+        </details>
+      </div>
+      <div class="source-actions">
+        <button id="clearLocalBtn" type="button" class="btn btn-danger">Limpar cache local</button>
+        <button id="refreshJsonBtn" type="button" class="btn btn-primary">Atualizar dados</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="toolbar">
+        <div class="field">
+          <label for="searchInput">Buscar</label>
+          <input id="searchInput" type="search" placeholder="Navio, serviço, viagem ou Visit">
         </div>
+        <div class="field">
+          <label for="serviceFilter">Serviço</label>
+          <select id="serviceFilter"><option value="">Todos</option></select>
+        </div>
+        <div class="field">
+          <label for="gate10Filter">Gate VIP</label>
+          <select id="gate10Filter"><option value="">Todos</option><option value="open">Aberto</option><option value="closed">Fechado</option></select>
+        </div>
+        <div class="field">
+          <label for="gateMainFilter">Gate Reefer / Dry</label>
+          <select id="gateMainFilter"><option value="">Todos</option><option value="any-open">Algum aberto</option><option value="all-closed">Todos fechados</option></select>
+        </div>
+        <button id="resetFilters" type="button" class="btn btn-ghost">Limpar filtros</button>
+        <button id="configPrevisaoBtn" type="button" class="btn btn-ghost">Configurar previsão</button>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button id="refreshJsonBtn" class="btn btn-primary">Atualizar dados</button>
-      </div>
-    </div>
 
-    <div class="info-strip">
-      ETA, deadlines e primeiro ETA vêm do JSON automático. Os status dos Gates e o histórico são compartilhados pelo Firebase entre os usuários autenticados e atualizados em tempo real. Este navegador mantém apenas o cache dos navios e do primeiro ETA.
-      <span id="sharedSyncInfo" role="status" style="display:block;margin-top:6px">v30: aguardando login e leitura do Firebase...</span>
-      <span id="jsonSourceInfo" style="display:block;margin-top:4px"></span>
-    </div>
-
-    <div class="cards">
-      <div class="card"><div class="card-label">Navios inbound</div><div id="countInbound" class="card-value">0</div><div class="card-sub">Visit Phase = I</div></div>
-      <div class="card"><div class="card-label">Gate VIP abertos</div><div id="countVIP" class="card-value">0</div></div>
-      <div class="card"><div class="card-label">Gate Reefer abertos</div><div id="countReefer" class="card-value">0</div></div>
-      <div class="card"><div class="card-label">Gate Dry abertos</div><div id="countDry" class="card-value">0</div></div>
-      <div class="card"><div class="card-label">Próximo ETA</div><div id="nextEta" class="card-value">-</div></div>
-      <div class="card"><div class="card-label">Última atualização JSON</div><div id="lastJsonUpdate" class="card-value" style="font-size:14px">-</div></div>
-    </div>
-
-    <div class="toolbar">
-      <div class="field">
-        <label>Buscar</label>
-        <input id="searchInput" type="search" placeholder="Navio, serviço, viagem ou Visit">
-      </div>
-      <div class="field">
-        <label>Serviço</label>
-        <select id="serviceFilter"><option value="">Todos</option></select>
-      </div>
-      <div class="field">
-        <label>Gate VIP</label>
-        <select id="gate10Filter"><option value="">Todos</option><option value="open">Aberto</option><option value="closed">Fechado</option></select>
-      </div>
-      <div class="field">
-        <label>Gate Reefer / Dry</label>
-        <select id="gateMainFilter"><option value="">Todos</option><option value="any-open">Algum aberto</option><option value="all-closed">Todos fechados</option></select>
-      </div>
-      <button id="resetFilters" class="btn btn-ghost">Limpar filtros</button>
-    </div>
-
-    <div class="table-shell">
-      <table>
-        <thead>
-          <tr>
-            <th class="sticky" style="min-width:72px">Serviço</th>
-            <th class="sticky2" style="min-width:170px">Navio</th>
-            <th>Viagem</th>
-            <th>Visit</th>
-            <th>ETA Atual</th>
-            <th>VIP</th>
-            <th>Reefer</th>
-            <th>Dry</th>
-            <th>7 Dias</th>
-            <th>DDL Reefer</th>
-            <th>DDL Dry</th>
-            <th>Prev. VIP</th>
-            <th>Prev. Reefer</th>
-            <th>Prev. Dry</th>
-          </tr>
-        </thead>
-        <tbody id="vesselBody"></tbody>
-      </table>
-      <div id="emptyState" class="empty">
-        <strong>Nenhum CSV carregado</strong>
-        Selecione o relatório de navios para montar a grade local.
+      <div class="table-shell">
+        <table>
+          <thead>
+            <tr>
+              <th class="sticky" rowspan="2">Serviço</th>
+              <th class="sticky2" rowspan="2">Navio</th>
+              <th rowspan="2">Viagem</th>
+              <th rowspan="2">Visit</th>
+              <th rowspan="2">ETA atual</th>
+              <th class="group edge" colspan="3">Gates</th>
+              <th class="group" colspan="3">Prazos</th>
+              <th class="group" colspan="3">Previsão (Baseado no 1º ETA)</th>
+            </tr>
+            <tr class="sub">
+              <th class="edge">VIP</th>
+              <th>Reefer</th>
+              <th>Dry</th>
+              <th class="edge">7 dias</th>
+              <th>DDL Reefer</th>
+              <th>DDL Dry</th>
+              <th class="edge" id="prevVipHead">VIP −11 d</th>
+              <th id="prevReeferHead">Reefer −6 d</th>
+              <th id="prevDryHead">Dry −4 d</th>
+            </tr>
+          </thead>
+          <tbody id="vesselBody"></tbody>
+        </table>
+        <div id="emptyState" class="empty">
+          <strong>Nenhum navio carregado</strong>
+          Os dados do JSON ainda não chegaram. Use Atualizar dados.
+        </div>
       </div>
     </div>
   </section>
 
-  <section id="viewHistorico" class="hidden">
-    <div class="history-card">
-      <div style="font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:800">Histórico de Gate</div>
-      <div style="font-size:20px;font-weight:900;color:var(--navy);margin-top:3px">Alterações realizadas nesta versão local</div>
-      <div style="font-size:12px;color:var(--muted);margin-top:4px">Cada abertura ou fechamento de Gate gera um evento com data, navio, viagem, ETA do momento, categoria, status e observação.</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
-        <button id="exportHistoryExcel" class="btn btn-primary">Gerar Excel</button>
-        <button id="clearHistoryBtn" class="btn btn-danger">Limpar histórico</button>
+  <section id="viewHistorico" class="view hidden" role="tabpanel" aria-labelledby="tabHistorico">
+    <div class="history-head">
+      <div>
+        <h2>Histórico de Gate</h2>
+        <p>Cada abertura ou fechamento de Gate gera um evento com data, navio, viagem, ETA do momento, categoria, status e observação.</p>
       </div>
-      <div class="history-grid" style="margin-top:14px">
-        <div class="field"><label>Buscar</label><input id="historySearch" type="search" placeholder="Navio, viagem, Visit"></div>
-        <div class="field"><label>Categoria</label><select id="historyCategory"><option value="">Todas</option><option value="gateVIP">VIP</option><option value="reefer">Reefer</option><option value="dry">Dry</option></select></div>
-        <div class="field"><label>Ação</label><select id="historyAction"><option value="">Todas</option><option value="open">Aberto</option><option value="closed">Fechado</option></select></div>
+      <div class="history-actions">
+        <button id="clearHistoryBtn" type="button" class="btn btn-danger">Limpar histórico</button>
+        <button id="exportHistoryExcel" type="button" class="btn btn-primary">Gerar Excel</button>
       </div>
     </div>
 
-    <div class="table-shell">
-      <table class="history-table">
-        <thead>
-          <tr><th>Data/Hora</th><th>Serviço</th><th>Navio</th><th>Viagem</th><th>Visit</th><th>ETA no momento</th><th>Categoria</th><th>Status</th><th>Observação</th><th>Usuário</th></tr>
-        </thead>
-        <tbody id="historyBody"></tbody>
-      </table>
-      <div id="historyEmpty" class="empty"><strong>Nenhuma alteração registrada</strong>As mudanças de Gate aparecerão aqui.</div>
+    <div class="panel">
+      <div class="toolbar toolbar-history">
+        <div class="field"><label for="historySearch">Buscar</label><input id="historySearch" type="search" placeholder="Navio, viagem, Visit"></div>
+        <div class="field"><label for="historyCategory">Categoria</label><select id="historyCategory"><option value="">Todas</option><option value="gateVIP">VIP</option><option value="reefer">Reefer</option><option value="dry">Dry</option></select></div>
+        <div class="field"><label for="historyAction">Ação</label><select id="historyAction"><option value="">Todas</option><option value="open">Aberto</option><option value="closed">Fechado</option></select></div>
+      </div>
+      <div class="table-shell">
+        <table class="history-table">
+          <thead>
+            <tr><th>Data/Hora</th><th>Serviço</th><th>Navio</th><th>Viagem</th><th>Visit</th><th>ETA no momento</th><th>Categoria</th><th>Status</th><th>Observação</th><th>Usuário</th></tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+        <div id="historyEmpty" class="empty"><strong>Nenhuma alteração registrada</strong>As mudanças de Gate aparecerão aqui.</div>
+      </div>
     </div>
   </section>
 </main>
 
 </div>
 
-<div id="toast" class="toast hidden"></div>
+<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
 <div id="confirmModal" class="modal-backdrop hidden">
-  <div class="modal">
-    <h3 id="modalTitle">Confirmar alteração</h3>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h2 id="modalTitle">Confirmar alteração</h2>
     <p id="modalText"></p>
-    <label for="modalNotes" style="display:block;font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:800;margin-top:10px">Observação</label>
+    <label for="modalNotes">Observação</label>
     <textarea id="modalNotes" placeholder="Opcional. Ex.: Gate fechado por restrição de pátio."></textarea>
-    <div id="modalStatus" style="margin-top:10px;font-size:12px;color:var(--muted)"></div>
+    <div id="modalStatus" class="modal-status"></div>
     <div class="modal-actions">
       <button id="modalCancel" type="button" class="btn btn-ghost">Cancelar</button>
       <button id="modalConfirm" type="button" class="btn btn-primary">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div id="armadorModal" class="modal-backdrop hidden">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="armadorTitle">
+    <h2 id="armadorTitle">Armador do navio</h2>
+    <p id="armadorCsv"></p>
+    <div class="field">
+      <label for="armadorInput">Armador</label>
+      <input id="armadorInput" type="text" list="armadorOptions" autocomplete="off">
+      <datalist id="armadorOptions"></datalist>
+    </div>
+    <p>Vale para todas as viagens deste navio e para todos os usuários. O cadastro manual tem prioridade sobre o CSV.</p>
+    <div id="armadorStatus" class="modal-status" role="status"></div>
+    <div class="modal-actions">
+      <button id="armadorRemove" type="button" class="btn btn-danger hidden">Remover manual</button>
+      <button id="armadorCancel" type="button" class="btn btn-ghost">Cancelar</button>
+      <button id="armadorSave" type="button" class="btn btn-primary">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div id="configModal" class="modal-backdrop hidden">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="configTitle">
+    <h2 id="configTitle">Configurar previsão</h2>
+    <p>Dias antes do 1º ETA usados no cálculo da coluna Previsão. A configuração vale para todos os usuários.</p>
+    <div class="config-grid">
+      <div class="field"><label for="cfgVip">VIP</label><input id="cfgVip" type="number" min="0" max="60" step="1" inputmode="numeric"></div>
+      <div class="field"><label for="cfgReefer">Reefer</label><input id="cfgReefer" type="number" min="0" max="60" step="1" inputmode="numeric"></div>
+      <div class="field"><label for="cfgDry">Dry</label><input id="cfgDry" type="number" min="0" max="60" step="1" inputmode="numeric"></div>
+    </div>
+    <div id="configStatus" class="modal-status" role="status"></div>
+    <div class="modal-actions">
+      <button id="configCancel" type="button" class="btn btn-ghost">Cancelar</button>
+      <button id="configSave" type="button" class="btn btn-primary">Salvar</button>
     </div>
   </div>
 </div>
@@ -391,36 +580,118 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 })();
 </script>
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
-import {
-  getAuth,
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
-import {
-  getDatabase,
-  ref,
-  onValue,
-  get,
-  set,
-  update,
-  push
-} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-database.js";
+// ===== backend: Supabase =====
+// Troque pelos dados do seu projeto: Supabase → Project Settings → API.
+// A chave "anon" é pública por natureza; quem protege os dados são as políticas RLS do supabase/schema.sql.
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/+esm";
+const SUPABASE_URL = "https://nlapdztthgpxrlltyzaw.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_Td_jm53MclXAygs9BE4eSA_jvy35ZNa";
+const BACKEND_NAME = "Supabase";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDhT2vV3ThNIkCIhUR6D_-7hTnbGejFgqo",
-  authDomain: "jbs-controlegrade.firebaseapp.com",
-  databaseURL: "https://jbs-controlegrade-default-rtdb.firebaseio.com",
-  projectId: "jbs-controlegrade",
-  storageBucket: "jbs-controlegrade.firebasestorage.app",
-  messagingSenderId: "261111959651",
-  appId: "1:261111959651:web:f8f8f366ff6b9bd5c46856"
+const backendConfigured = !SUPABASE_URL.includes("SEU-PROJETO") && !SUPABASE_ANON_KEY.startsWith("COLE_AQUI");
+const supabase = backendConfigured ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+// O Supabase devolve no máximo 1000 linhas por consulta; busca em páginas.
+async function fetchAll(table, orderBy, ascending = true){
+  const rows = [];
+  for(let from = 0; ; from += 1000){
+    const {data, error} = await supabase.from(table).select("*").order(orderBy, {ascending}).range(from, from + 999);
+    if(error) throw error;
+    rows.push(...data);
+    if(data.length < 1000) return rows;
+  }
+}
+const backend = {
+  currentUser: null,
+  onAuth(cb){
+    if(!supabase){ setTimeout(()=>cb(null), 0); return; }
+    let lastUid;
+    supabase.auth.onAuthStateChange((_event, session)=>{
+      const user = session?.user ? {uid: session.user.id, email: session.user.email || ""} : null;
+      backend.currentUser = user;
+      // A renovação do token repete o evento; só reage quando o usuário muda.
+      if((user?.uid ?? null) === lastUid) return;
+      lastUid = user?.uid ?? null;
+      setTimeout(()=>cb(user), 0);
+    });
+  },
+  async signIn(email, password){
+    if(!supabase) throw new Error("Configure SUPABASE_URL e SUPABASE_ANON_KEY no index.html.");
+    const {error} = await supabase.auth.signInWithPassword({email, password});
+    if(error) throw error;
+  },
+  async signOut(){ if(supabase) await supabase.auth.signOut(); },
+  watch(h){
+    const load = {
+      gates: async()=>{
+        const map = {};
+        for(const r of await fetchAll("controle_gate", "visit")){
+          (map[r.visit] ||= {gateVIP:"closed", reefer:"closed", dry:"closed"})[r.categoria] = r.status === "open" ? "open" : "closed";
+        }
+        h.gates(map);
+      },
+      history: async()=>{
+        const rows = await fetchAll("historico_gate", "timestamp", false);
+        h.history(rows.map(r=>({
+          id: r.id, timestamp: r.timestamp, servico: r.servico, navio: r.navio, viagem: r.viagem,
+          visit: r.visit, eta: r.eta, categoria: r.categoria, status: r.status, notes: r.notes,
+          usuarioUid: r.usuario_uid, usuarioEmail: r.usuario_email, automatico: r.automatico
+        })));
+      },
+      config: async()=>{
+        const {data, error} = await supabase.from("config_grade").select("valor").eq("id", "previsao").maybeSingle();
+        if(error) throw error;
+        h.config(data?.valor ?? null);
+      },
+      armadores: async()=>{
+        const rows = await fetchAll("armadores", "navio");
+        h.armadores(Object.fromEntries(rows.map(r=>[r.navio, {armador: r.armador}])));
+      }
+    };
+    const run = section => load[section]().catch(err=>h.error(section, err));
+    const tables = {controle_gate:"gates", historico_gate:"history", config_grade:"config", armadores:"armadores"};
+    const channel = supabase.channel("controle-grade");
+    for(const [table, section] of Object.entries(tables))
+      channel.on("postgres_changes", {event:"*", schema:"public", table}, ()=>run(section));
+    channel.subscribe(status=>{
+      h.connection(status === "SUBSCRIBED" ? "conectado" : status === "CHANNEL_ERROR" || status === "TIMED_OUT" ? "sem tempo real (recarregue a página)" : "conectando");
+      // Ao (re)conectar, relê tudo para não perder mudanças feitas enquanto estava desconectado.
+      if(status === "SUBSCRIBED") Object.keys(load).forEach(run);
+    });
+    Object.keys(load).forEach(run);
+    return ()=>supabase.removeChannel(channel);
+  },
+  // Grava o Gate e o evento do histórico juntos. Com auto=true só fecha se ainda estiver aberto,
+  // então dois navegadores nunca registram o mesmo fechamento automático.
+  async changeGate({v, cat, next, notes = "", auto = false}){
+    const {data, error} = await supabase.rpc("alterar_gate", {
+      p_visit: String(v.visit), p_categoria: cat, p_status: next,
+      p_servico: String(v.servico ?? ""), p_navio: String(v.navio ?? ""), p_viagem: String(v.viagem ?? ""),
+      p_eta: String(v.eta ?? ""), p_notes: notes, p_automatico: auto
+    });
+    if(error) throw error;
+    return data === true;
+  },
+  async saveConfig(values){
+    const {error} = await supabase.from("config_grade").upsert({id:"previsao", valor:values, alterado_por_email: backend.currentUser?.email || ""});
+    if(error) throw error;
+  },
+  async saveArmador(navio, nomeNavio, armador){
+    const {error} = armador
+      ? await supabase.from("armadores").upsert({navio, navio_nome: nomeNavio, armador, alterado_por_email: backend.currentUser?.email || ""})
+      : await supabase.from("armadores").delete().eq("navio", navio);
+    if(error) throw error;
+  },
+  async clearHistory(){
+    const {error} = await supabase.from("historico_gate").delete().gte("id", 0);
+    if(error) throw error;
+  }
 };
-
-const firebaseApp = initializeApp(firebaseConfig);
-const auth = getAuth(firebaseApp);
-const db = getDatabase(firebaseApp);
+function isPermissionError(err){
+  const text = `${err?.code || ""} ${err?.message || ""}`.toLowerCase();
+  return text.includes("42501") || text.includes("row-level security") || text.includes("permission");
+}
+// ===== fim do backend =====
 
 const STORAGE = {
   firstEta: "controleGradeMock_firstEta_v1",
@@ -437,10 +708,33 @@ let gatesMap = {};
 let historyEvents = [];
 let pendingGateChange = null;
 let gateSaveInProgress = false;
-let unsubscribeGates = null;
-let unsubscribeHistory = null;
-let unsubscribeConnection = null;
-const sharedSync = {connection:"conectando", gates:"aguardando", history:"aguardando"};
+let unsubscribeShared = null;
+let armadoresMap = {};
+let pendingArmadorVessel = null;
+let armadorSaveInProgress = false;
+// Armadores com logo em logos/. Os apelidos cobrem as grafias prováveis do CSV.
+const ARMADORES = [
+  {nome:"CMA CGM", logo:"logos/cma-cgm.svg", apelidos:["CMA"]},
+  {nome:"COSCO", logo:"logos/cosco.svg", apelidos:["COSCO SHIPPING"]},
+  {nome:"EVERGREEN", logo:"logos/evergreen.svg", apelidos:["EMC"]},
+  {nome:"HAPAG-LLOYD", logo:"logos/hapag-lloyd.svg", apelidos:["HAPAG", "HLC"]},
+  {nome:"HMM", logo:"logos/hmm.svg", apelidos:["HYUNDAI"]},
+  {nome:"K LINE", logo:"logos/kline.svg", apelidos:["KLINE"]},
+  {nome:"MAERSK", logo:"logos/maersk.svg", apelidos:["MAERSK LINE", "MSK"]},
+  {nome:"MOL", logo:"logos/mol.svg", apelidos:[]},
+  {nome:"MSC", logo:"logos/msc.svg", apelidos:["MEDITERRANEAN SHIPPING COMPANY", "MEDITERRANEAN SHIPPING"]},
+  {nome:"ONE", logo:"logos/one.svg", apelidos:["OCEAN NETWORK EXPRESS"]},
+  {nome:"OOCL", logo:"logos/oocl.svg", apelidos:[]},
+  {nome:"ZIM", logo:"logos/zim.svg", apelidos:[]}
+];
+function normArmador(nome){return String(nome ?? "").toUpperCase().replace(/[\s\-_.]+/g," ").trim()}
+const ARMADOR_LOGOS = Object.fromEntries(ARMADORES.flatMap(a=>[a.nome, ...a.apelidos].map(n=>[normArmador(n), a.logo])));
+let gatesLoaded = false;
+let configSaveInProgress = false;
+const autoCloseInFlight = new Set();
+const PREVISAO_DEFAULT = {vip:11, reefer:6, dry:4};
+let previsaoCfg = {...PREVISAO_DEFAULT};
+const sharedSync = {connection:"conectando", gates:"aguardando", history:"aguardando", config:"aguardando", armadores:"aguardando"};
 
 const el = id => document.getElementById(id);
 
@@ -501,6 +795,11 @@ function formatDate(value){
   if(!d || Number.isNaN(d.getTime())) return "-";
   return new Intl.DateTimeFormat("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}).format(d);
 }
+function formatDateShort(value){
+  const d = value instanceof Date ? value : parseDateLocal(value);
+  if(!d || Number.isNaN(d.getTime())) return "-";
+  return new Intl.DateTimeFormat("pt-BR",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}).format(d);
+}
 function addDays(value, days){
   const d = parseDateLocal(value);
   if(!d) return null;
@@ -554,27 +853,33 @@ function deadlineDaysClass(value){
   if(days<=2) return "soon";
   return "";
 }
-function firebaseKey(visit){
-  const value = String(visit ?? "").trim();
-  if(!value) throw new Error("Visit da escala não informado.");
-  return value.replace(/[.#$\[\]\/\u0000-\u001f\u007f]/g, "_");
+function cleanKey(value){
+  const text = String(value ?? "").trim();
+  if(!text) throw new Error("Identificador não informado.");
+  return text.replace(/[.#$\[\]\/\u0000-\u001f\u007f]/g, "_");
 }
 function showGateError(err){
   console.error("Erro na confirmação do Gate:", err);
-  const code = String(err?.code || "").toLowerCase();
   let message = err?.message || "Não foi possível confirmar a alteração.";
-  if(code.includes("permission_denied") || code.includes("permission-denied"))
-    message = "Permissão negada pelo Firebase. Verifique as Rules de controleGate e historicoGate.";
-  else if(code.includes("network"))
-    message = "Falha de comunicação com o Firebase. Verifique a conexão.";
+  if(isPermissionError(err))
+    message = `Permissão negada pelo ${BACKEND_NAME}. Verifique as políticas de controle_gate e historico_gate.`;
+  else if(/fetch|network/i.test(String(err?.message || "")))
+    message = `Falha de comunicação com o ${BACKEND_NAME}. Verifique a conexão.`;
   const status = el("modalStatus");
-  if(status){ status.textContent = message; status.style.color = "var(--red)"; }
+  if(status){ status.textContent = message; status.style.color = "var(--color-error)"; }
 }
 function renderSharedSync(){
   const target = el("sharedSyncInfo");
   if(!target) return;
-  target.textContent = `v30 · Firebase: ${sharedSync.connection} · Gates: ${sharedSync.gates} · Histórico: ${sharedSync.history}`;
-  target.style.color = [sharedSync.gates, sharedSync.history].some(x=>x.startsWith("ERRO")) ? "var(--red)" : "var(--muted)";
+  target.innerHTML = [
+    "v30",
+    `${BACKEND_NAME}: ${sharedSync.connection}`,
+    `Gates: ${sharedSync.gates}`,
+    `Histórico: ${sharedSync.history}`,
+    `Previsão: ${sharedSync.config}`,
+    `Armadores: ${sharedSync.armadores}`
+  ].map(part=>`<span>${escapeHtml(part)}</span>`).join("");
+  target.classList.toggle("is-error", [sharedSync.gates, sharedSync.history, sharedSync.config, sharedSync.armadores].some(x=>x.startsWith("ERRO")));
 }
 function sharedReadError(section, err){
   console.error(`Falha de leitura compartilhada (${section}):`, err);
@@ -582,38 +887,53 @@ function sharedReadError(section, err){
   renderSharedSync();
 }
 function startSharedListeners(){
+  sharedSync.connection = "conectando";
   sharedSync.gates = "carregando";
   sharedSync.history = "carregando";
+  sharedSync.config = "carregando";
+  sharedSync.armadores = "carregando";
   renderSharedSync();
-  if(unsubscribeConnection) unsubscribeConnection();
-  unsubscribeConnection = onValue(ref(db, ".info/connected"), snapshot=>{
-    sharedSync.connection = snapshot.val() ? "conectado" : "sem conexão (alterações podem aguardar envio)";
-    renderSharedSync();
-  }, err=>sharedReadError("gates", err));
-  if(unsubscribeGates) unsubscribeGates();
-  if(unsubscribeHistory) unsubscribeHistory();
-  unsubscribeGates = onValue(ref(db, "controleGate"), snapshot=>{
-    const shared = {};
-    for(const [key, record] of Object.entries(snapshot.val() || {})){
-      const state = {};
-      for(const cat of ["gateVIP", "reefer", "dry"]){
-        const entry = record[cat] ?? (cat === "gateVIP" ? record.vip ?? record.gate10d : undefined);
-        state[cat] = (typeof entry === "string" ? entry : entry?.status) === "open" ? "open" : "closed";
-      }
-      shared[String(record.visit ?? key)] = state;
+  stopSharedListeners();
+  unsubscribeShared = backend.watch({
+    connection: state=>{
+      sharedSync.connection = state;
+      renderSharedSync();
+    },
+    gates: shared=>{
+      gatesMap = shared;
+      gatesLoaded = true;
+      sharedSync.gates = `${Object.keys(shared).length} escalas lidas`;
+      renderSharedSync();
+      try{render();}catch(err){sharedReadError("gates", err);}
+      runAutoClose();
+    },
+    history: events=>{
+      historyEvents = events
+        .sort((a,b)=>String(b.timestamp || "").localeCompare(String(a.timestamp || "")));
+      sharedSync.history = `${historyEvents.length} eventos lidos`;
+      renderSharedSync();
+      try{renderHistory();}catch(err){sharedReadError("history", err);}
+    },
+    config: raw=>{
+      previsaoCfg = normalizePrevisao(raw);
+      sharedSync.config = raw ? "configuração lida" : "padrão";
+      renderSharedSync();
+      try{render();}catch(err){sharedReadError("config", err);}
+    },
+    armadores: map=>{
+      armadoresMap = map;
+      sharedSync.armadores = `${Object.keys(armadoresMap).length} cadastrados`;
+      renderSharedSync();
+      try{renderTable();}catch(err){sharedReadError("armadores", err);}
+    },
+    error: (section, err)=>{
+      if(section === "config") previsaoCfg = {...PREVISAO_DEFAULT};
+      sharedReadError(section, err);
     }
-    gatesMap = shared;
-    sharedSync.gates = `${Object.keys(shared).length} escalas lidas`;
-    renderSharedSync();
-    try{render();}catch(err){sharedReadError("gates", err);}
-  }, err=>sharedReadError("gates", err));
-  unsubscribeHistory = onValue(ref(db, "historicoGate"), snapshot=>{
-    historyEvents = Object.entries(snapshot.val() || {}).map(([id, event])=>({...event, id}))
-      .sort((a,b)=>String(b.timestamp || "").localeCompare(String(a.timestamp || "")));
-    sharedSync.history = `${historyEvents.length} eventos lidos`;
-    renderSharedSync();
-    try{renderHistory();}catch(err){sharedReadError("history", err);}
-  }, err=>sharedReadError("history", err));
+  });
+}
+function stopSharedListeners(){
+  if(unsubscribeShared){unsubscribeShared();unsubscribeShared=null;}
 }
 function ensureGateState(visit){
   if(!gatesMap[visit]){
@@ -621,7 +941,74 @@ function ensureGateState(visit){
   }
   return gatesMap[visit];
 }
+function normalizePrevisao(raw){
+  const out = {...PREVISAO_DEFAULT};
+  for(const k of Object.keys(PREVISAO_DEFAULT)){
+    const n = Number(raw?.[k]);
+    if(Number.isInteger(n) && n >= 0 && n <= 60) out[k] = n;
+  }
+  return out;
+}
+// Reefer fecha no DDL Reefer, Dry no DDL Dry, VIP no maior dos dois.
+function gateDeadline(v,cat){
+  const reefer = parseDateLocal(v.ddl_reefer);
+  const dry = parseDateLocal(v.ddl_dry);
+  if(cat === "reefer") return reefer;
+  if(cat === "dry") return dry;
+  if(reefer && dry) return reefer > dry ? reefer : dry;
+  return reefer || dry;
+}
+function gateDeadlinePassed(v,cat){
+  const d = gateDeadline(v,cat);
+  return !!d && d.getTime() <= Date.now();
+}
+// Escala some da grade quando os dois DDLs ficaram antes de hoje.
+function vesselExpired(v){
+  const reefer = daysUntilDryDeadline(v.ddl_reefer);
+  const dry = daysUntilDryDeadline(v.ddl_dry);
+  return reefer !== null && dry !== null && reefer < 0 && dry < 0;
+}
+function activeVessels(){return vessels.filter(v=>!vesselExpired(v))}
+function runAutoClose(){
+  if(!backend.currentUser || !gatesLoaded) return;
+  for(const v of vessels){
+    for(const cat of ["gateVIP","reefer","dry"]){
+      if(ensureGateState(v.visit)[cat] !== "open" || !gateDeadlinePassed(v,cat)) continue;
+      const id = `${v.visit}|${cat}`;
+      if(autoCloseInFlight.has(id)) continue;
+      autoCloseInFlight.add(id);
+      autoCloseGate(v,cat)
+        .catch(err=>{console.error("Falha no fechamento automático:", err); sharedReadError("gates", err);})
+        .finally(()=>autoCloseInFlight.delete(id));
+    }
+  }
+}
+async function autoCloseGate(v,cat){
+  const which = cat === "gateVIP" ? "maior DDL" : `DDL ${categoryLabel(cat)}`;
+  const closed = await backend.changeGate({
+    v, cat, next: "closed", auto: true,
+    notes: `Fechado automaticamente: ${which} expirado em ${formatDate(gateDeadline(v,cat))}.`
+  });
+  if(closed) toast(`${categoryLabel(cat)} fechado automaticamente para ${v.navio}.`);
+}
+function navioKey(name){return cleanKey(String(name ?? "").trim().toUpperCase())}
+// Cadastro manual tem prioridade sobre o armador vindo do CSV.
+function armadorOf(v){
+  let manual = "";
+  try{ manual = String(armadoresMap[navioKey(v.navio)]?.armador || "").trim(); }catch{}
+  if(manual) return {nome:manual, origem:"manual"};
+  const csv = String(v.armador || "").trim();
+  return csv ? {nome:csv, origem:"csv"} : {nome:"", origem:""};
+}
+function armadorMark(nome){
+  if(!nome) return "";
+  const logo = ARMADOR_LOGOS[normArmador(nome)];
+  if(logo) return `<span class="carrier-chip"><img class="carrier-logo" src="${escapeHtml(logo)}" alt="${escapeHtml(nome)}" title="${escapeHtml(nome)}" data-nome="${escapeHtml(nome)}" height="16"></span>`;
+  return `<span class="carrier-badge">${escapeHtml(nome)}</span>`;
+}
+function historyUser(h){return h.automatico ? `Automático (${h.usuarioEmail || ""})` : (h.usuarioEmail || "")}
 function gateLabel(status){return status === "open" ? "ABERTO" : "FECHADO"}
+function gateText(status){return status === "open" ? "Aberto" : "Fechado"}
 function categoryLabel(cat){return ({gateVIP:"VIP",reefer:"Reefer",dry:"Dry"})[cat] || cat}
 
 
@@ -640,6 +1027,7 @@ function processPayload(payload){
       navio: v.navio || "",
       visit: v.visit || "",
       viagem: v.viagem || "",
+      armador: v.armador || "",
       visit_phase: v.visitPhase || "I",
       eta: v.eta || "",
       ddl_reefer: v.ddlReefer || "",
@@ -665,13 +1053,15 @@ function processPayload(payload){
 
   fillServiceFilter();
   render();
+  runAutoClose();
 }
 
 async function loadJsonData(force=false){
   const btn = el("refreshJsonBtn");
   const oldText = btn.textContent;
   btn.disabled = true;
-  btn.textContent = "Atualizando...";
+  btn.setAttribute("aria-busy","true");
+  btn.textContent = "Atualizando…";
 
   try{
     const url = NAVIOS_JSON_URL + (force ? `?t=${Date.now()}` : "");
@@ -687,8 +1077,8 @@ async function loadJsonData(force=false){
     const meta = readJSON(STORAGE.lastJsonMeta, {});
     const origemArquivo = meta.origem?.arquivo || "navios-latest.json";
     el("jsonSourceInfo").textContent =
-      `Arquivo: ${origemArquivo}` +
-      (meta.atualizadoEm ? ` · Atualizado em ${formatIsoDateTime(meta.atualizadoEm)}` : "");
+      `Arquivo: ${origemArquivo}.` +
+      (meta.atualizadoEm ? ` Atualizado em ${formatIsoDateTime(meta.atualizadoEm)}.` : "");
 
     toast(`${vessels.length} navios carregados do JSON.`);
   }catch(err){
@@ -699,6 +1089,7 @@ async function loadJsonData(force=false){
       vessels = cached;
       fillServiceFilter();
       render();
+      runAutoClose();
 
       const meta = readJSON(STORAGE.lastJsonMeta, {});
       el("jsonSourceInfo").textContent =
@@ -712,6 +1103,7 @@ async function loadJsonData(force=false){
     }
   }finally{
     btn.disabled = false;
+    btn.removeAttribute("aria-busy");
     btn.textContent = oldText;
   }
 }
@@ -728,7 +1120,7 @@ function formatIsoDateTime(value){
 
 function fillServiceFilter(){
   const current = el("serviceFilter").value;
-  const services = [...new Set(vessels.map(v=>v.servico).filter(Boolean))].sort();
+  const services = [...new Set(activeVessels().map(v=>v.servico).filter(Boolean))].sort();
   el("serviceFilter").innerHTML = '<option value="">Todos</option>' + services.map(s=>`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
   if(services.includes(current)) el("serviceFilter").value=current;
 }
@@ -743,6 +1135,19 @@ function dateClass(value){
   if(diff <= 24*3600*1000) return "date-soon";
   return "";
 }
+// Prazos: cor padrão; laranja só quando a data é hoje (horário de Brasília).
+function prazoClass(value){
+  const d = value instanceof Date ? value : parseDateLocal(value);
+  if(!d || Number.isNaN(d.getTime())) return "";
+  const t = todayBrazilParts();
+  return d.getFullYear()===t.year && d.getMonth()+1===t.month && d.getDate()===t.day ? "date-today" : "";
+}
+// Previsão: verde se o Gate está aberto ou a data ainda não chegou; vermelho se passou e o Gate segue fechado.
+function previsaoClass(v,cat,date){
+  if(!date || Number.isNaN(date.getTime())) return "";
+  if(ensureGateState(v.visit)[cat]==="open" || Date.now() < date.getTime()) return "date-ok";
+  return "date-late";
+}
 function filters(){
   return {
     q:el("searchInput").value.trim().toLowerCase(),
@@ -753,9 +1158,9 @@ function filters(){
 }
 function filteredVessels(){
   const f=filters();
-  return vessels.filter(v=>{
+  return activeVessels().filter(v=>{
     const g=ensureGateState(v.visit);
-    const hay=[v.navio,v.servico,v.viagem,v.visit].join(" ").toLowerCase();
+    const hay=[v.navio,v.servico,v.viagem,v.visit,armadorOf(v).nome].join(" ").toLowerCase();
     if(f.q && !hay.includes(f.q)) return false;
     if(f.service && v.servico !== f.service) return false;
     if(f.gate10 && g.gateVIP !== f.gate10) return false;
@@ -767,18 +1172,25 @@ function filteredVessels(){
 
 function gateButton(v,cat){
   const state=ensureGateState(v.visit)[cat];
-  return `<div class="gate-cell">
-    <button class="gate-btn ${state}" data-visit="${escapeHtml(v.visit)}" data-cat="${cat}">${gateLabel(state)}</button>
-    <div class="gate-deadline ${deadlineDaysClass(v.ddl_dry)}">${escapeHtml(deadlineDaysText(v.ddl_dry))}</div>
-  </div>`;
+  const locked=state==="closed" && gateDeadlinePassed(v,cat);
+  const label=locked
+    ? `Gate ${categoryLabel(cat)} de ${v.navio}: fechado, deadline expirado`
+    : `Gate ${categoryLabel(cat)} de ${v.navio}: ${gateText(state).toLowerCase()}. Alterar`;
+  return `<button type="button" class="gate-btn ${state}" data-visit="${escapeHtml(v.visit)}" data-cat="${cat}" aria-label="${escapeHtml(label)}"${locked?` disabled title="Deadline expirado"`:""}>${gateText(state)}</button>`;
+}
+function renderPrevisaoHeads(){
+  el("prevVipHead").textContent=`VIP −${previsaoCfg.vip} d`;
+  el("prevReeferHead").textContent=`Reefer −${previsaoCfg.reefer} d`;
+  el("prevDryHead").textContent=`Dry −${previsaoCfg.dry} d`;
 }
 function render(){
+  renderPrevisaoHeads();
   renderCards();
   renderTable();
   renderHistory();
 }
 function renderCards(){
-  const all=vessels;
+  const all=activeVessels();
   el("countInbound").textContent=all.length.toLocaleString("pt-BR");
   el("countVIP").textContent=all.filter(v=>ensureGateState(v.visit).gateVIP==="open").length;
   el("countReefer").textContent=all.filter(v=>ensureGateState(v.visit).reefer==="open").length;
@@ -786,6 +1198,7 @@ function renderCards(){
   const next=all.map(v=>({v,d:parseDateLocal(v.eta)})).filter(x=>x.d && x.d>=new Date()).sort((a,b)=>a.d-b.d)[0];
   el("nextEta").textContent=next?`${next.v.navio}`:"-";
   el("nextEta").title=next?formatDate(next.d):"";
+  el("nextEtaDate").textContent=next?formatDate(next.d):"";
   const meta=readJSON(STORAGE.lastJsonMeta,{}); el("lastJsonUpdate").textContent=meta.atualizadoEm?formatIsoDateTime(meta.atualizadoEm):"-";
 }
 function renderTable(){
@@ -794,39 +1207,53 @@ function renderTable(){
   body.innerHTML="";
   for(const v of rows){
     const first=v.primeiro_eta || firstEtaMap[v.visit] || v.eta;
-    const prev10=addDays(v.eta,-10);
+    const prevVip=addDays(first,-previsaoCfg.vip);
+    const prevReefer=addDays(first,-previsaoCfg.reefer);
+    const prevDry=addDays(first,-previsaoCfg.dry);
     const seven=addDays(v.eta,-7);
     const tr=document.createElement("tr");
     tr.innerHTML=`
       <td class="sticky">${escapeHtml(v.servico)}</td>
-      <td class="sticky2">${escapeHtml(v.navio)}</td>
+      <td class="sticky2"><button type="button" class="vessel-btn" data-visit="${escapeHtml(v.visit)}" title="Definir armador" aria-label="${escapeHtml(`${v.navio}: definir armador`)}"><span>${escapeHtml(v.navio)}</span>${armadorMark(armadorOf(v).nome)}</button></td>
       <td>${escapeHtml(v.viagem)}</td>
       <td>${escapeHtml(v.visit)}</td>
-      <td><div class="date-main">${formatDate(v.eta)}</div></td>
-      <td>${gateButton(v,"gateVIP")}</td>
-      <td>${gateButton(v,"reefer")}</td>
-      <td>${gateButton(v,"dry")}</td>
-      <td><div class="date-main ${dateClass(seven)}">${formatDate(seven)}</div></td>
-      <td><div class="date-main ${dateClass(v.ddl_reefer)}">${formatDate(v.ddl_reefer)}</div></td>
-      <td><div class="date-main ${dateClass(v.ddl_dry)}">${formatDate(v.ddl_dry)}</div></td>
-      <td><div class="date-main ${dateClass(prev10)}">${formatDate(prev10)}</div></td>
-      <td><div class="date-main">${formatDate(first)}</div><div class="date-sub">1º ETA</div></td>
-      <td><div class="date-main">${formatDate(first)}</div><div class="date-sub">1º ETA</div></td>`;
+      <td><div class="date-main">${formatDateShort(v.eta)}</div></td>
+      <td class="gate edge">${gateButton(v,"gateVIP")}</td>
+      <td class="gate">${gateButton(v,"reefer")}</td>
+      <td class="gate">${gateButton(v,"dry")}</td>
+      <td class="edge"><div class="date-main ${prazoClass(seven)}">${formatDateShort(seven)}</div></td>
+      <td><div class="date-main ${prazoClass(v.ddl_reefer)}">${formatDateShort(v.ddl_reefer)}</div></td>
+      <td><div class="date-main ${prazoClass(v.ddl_dry)}">${formatDateShort(v.ddl_dry)}</div><div class="gate-deadline ${deadlineDaysClass(v.ddl_dry)}">${escapeHtml(deadlineDaysText(v.ddl_dry))}</div></td>
+      <td class="edge"><div class="date-main ${previsaoClass(v,"gateVIP",prevVip)}">${formatDateShort(prevVip)}</div></td>
+      <td><div class="date-main ${previsaoClass(v,"reefer",prevReefer)}">${formatDateShort(prevReefer)}</div></td>
+      <td><div class="date-main ${previsaoClass(v,"dry",prevDry)}">${formatDateShort(prevDry)}</div></td>`;
     body.appendChild(tr);
   }
   el("emptyState").classList.toggle("hidden", rows.length>0);
   if(vessels.length && !rows.length){
     el("emptyState").innerHTML="<strong>Nenhum navio encontrado</strong>Ajuste os filtros para visualizar os registros.";
   }else if(!vessels.length){
-    el("emptyState").innerHTML="<strong>Nenhum CSV carregado</strong>Selecione o relatório de navios para montar a grade local.";
+    el("emptyState").innerHTML="<strong>Nenhum navio carregado</strong>Os dados do JSON ainda não chegaram. Use Atualizar dados.";
   }
   body.querySelectorAll(".gate-btn").forEach(btn=>btn.addEventListener("click",()=>requestGateChange(btn.dataset.visit,btn.dataset.cat)));
+  body.querySelectorAll(".vessel-btn").forEach(btn=>btn.addEventListener("click",()=>openArmador(btn.dataset.visit)));
+  // Se o arquivo do logo não carregar, volta para o selo com o nome.
+  body.querySelectorAll("img.carrier-logo").forEach(img=>img.addEventListener("error",()=>{
+    const badge=document.createElement("span");
+    badge.className="carrier-badge";
+    badge.textContent=img.dataset.nome || img.alt;
+    img.closest(".carrier-chip").replaceWith(badge);
+  },{once:true}));
 }
 function requestGateChange(visit,cat){
   const v=vessels.find(x=>x.visit===visit);
   if(!v) return;
   const current=ensureGateState(visit)[cat];
   const next=current==="open"?"closed":"open";
+  if(next==="open" && gateDeadlinePassed(v,cat)){
+    toast(`O deadline do Gate ${categoryLabel(cat)} de ${v.navio} já expirou. Ele não pode ser reaberto.`);
+    return;
+  }
   pendingGateChange={v,cat,next};
   el("modalConfirm").disabled = false;
   el("modalConfirm").textContent = "Confirmar";
@@ -851,36 +1278,18 @@ async function confirmGateChange(){
     confirmBtn.disabled = true;
     if(cancelBtn) cancelBtn.disabled = true;
     notesInput.disabled = true;
-    confirmBtn.textContent = "Processando...";
+    confirmBtn.textContent = "Processando…";
     if(!pendingGateChange) throw new Error("Alteração não identificada. Feche a janela e selecione o Gate novamente.");
-    const user = auth.currentUser;
-    if(!user) throw new Error("Sua sessão não está disponível. Entre novamente e tente de novo.");
+    if(!backend.currentUser) throw new Error("Sua sessão não está disponível. Entre novamente e tente de novo.");
     const {v,cat,next} = pendingGateChange;
     if(!v || !["gateVIP","reefer","dry"].includes(cat) || !["open","closed"].includes(next))
       throw new Error("Dados da alteração de Gate inválidos.");
-    const key = firebaseKey(v.visit);
-    const firebaseCategory = cat;
+    cleanKey(v.visit);
     const notes = notesInput.value.trim();
-    const now = new Date().toISOString();
-    confirmBtn.textContent = "Salvando...";
-    el("modalStatus").textContent = "Salvando alteração no Firebase...";
-    el("modalStatus").style.color = "var(--muted)";
-    const historyRef = push(ref(db, "historicoGate"));
-    if(!historyRef.key) throw new Error("Não foi possível gerar o registro de histórico.");
-    const changes = {};
-    changes[`controleGate/${key}/${firebaseCategory}`] = {
-      status: next, alteradoEm: now,
-      alteradoPor: user.uid, alteradoPorEmail: user.email || ""
-    };
-    for(const field of ["visit", "servico", "navio", "viagem"])
-      changes[`controleGate/${key}/${field}`] = String(v[field] ?? "");
-    changes[`historicoGate/${historyRef.key}`] = {
-      timestamp: now, servico: String(v.servico ?? ""),
-      navio: String(v.navio ?? ""), viagem: String(v.viagem ?? ""),
-      visit: String(v.visit), eta: v.eta ?? "", categoria: cat,
-      status: next, notes, usuarioUid: user.uid, usuarioEmail: user.email || ""
-    };
-    await update(ref(db), changes);
+    confirmBtn.textContent = "Salvando…";
+    el("modalStatus").textContent = `Salvando alteração no ${BACKEND_NAME}…`;
+    el("modalStatus").style.color = "var(--color-muted)";
+    await backend.changeGate({v, cat, next, notes});
 
     pendingGateChange = null;
     el("confirmModal").classList.add("hidden");
@@ -917,9 +1326,9 @@ function renderHistory(){
       <td>${escapeHtml(h.visit)}</td>
       <td>${h.eta ? formatDate(h.eta) : "-"}</td>
       <td>${categoryLabel(h.categoria)}</td>
-      <td class="${h.status==="open"?"action-open":"action-close"}">${gateLabel(h.status)}</td>
-      <td style="text-align:left;white-space:normal;min-width:220px">${escapeHtml(h.notes || "")}</td>
-      <td>${escapeHtml(h.usuarioEmail || "")}</td>`;
+      <td class="${h.status==="open"?"action-open":"action-close"}">${gateText(h.status)}</td>
+      <td class="notes">${escapeHtml(h.notes || "")}</td>
+      <td>${escapeHtml(historyUser(h))}</td>`;
     body.appendChild(tr);
   });
   el("historyEmpty").classList.toggle("hidden",rows.length>0);
@@ -964,12 +1373,142 @@ document.addEventListener("click", async event=>{
 }, true);
 el("confirmModal").addEventListener("click",e=>{if(!gateSaveInProgress && e.target===el("confirmModal")){pendingGateChange=null;el("confirmModal").classList.add("hidden")}});
 
+function openConfig(){
+  el("cfgVip").value=previsaoCfg.vip;
+  el("cfgReefer").value=previsaoCfg.reefer;
+  el("cfgDry").value=previsaoCfg.dry;
+  el("configStatus").textContent="";
+  el("configModal").classList.remove("hidden");
+  el("cfgVip").focus();
+}
+function closeConfig(){
+  if(configSaveInProgress) return;
+  el("configModal").classList.add("hidden");
+}
+async function saveConfig(){
+  if(configSaveInProgress) return;
+  const status=el("configStatus");
+  const values={};
+  for(const [k,id] of [["vip","cfgVip"],["reefer","cfgReefer"],["dry","cfgDry"]]){
+    const n=Number(el(id).value);
+    if(el(id).value==="" || !Number.isInteger(n) || n<0 || n>60){
+      status.textContent="Use números inteiros de 0 a 60.";
+      status.style.color="var(--color-error)";
+      el(id).focus();
+      return;
+    }
+    values[k]=n;
+  }
+  if(!backend.currentUser){status.textContent="Sua sessão não está disponível. Entre novamente.";status.style.color="var(--color-error)";return;}
+  configSaveInProgress=true;
+  const saveBtn=el("configSave");
+  saveBtn.disabled=true;
+  saveBtn.textContent="Salvando…";
+  status.textContent=`Salvando no ${BACKEND_NAME}…`;
+  status.style.color="var(--color-muted)";
+  try{
+    await backend.saveConfig(values);
+    configSaveInProgress=false;
+    closeConfig();
+    toast("Previsão atualizada para todos os usuários.");
+  }catch(err){
+    console.error(err);
+    status.textContent=isPermissionError(err)
+      ? `Permissão negada pelo ${BACKEND_NAME}. Verifique as políticas de config_grade.`
+      : (err?.message || "Não foi possível salvar a configuração.");
+    status.style.color="var(--color-error)";
+  }finally{
+    configSaveInProgress=false;
+    saveBtn.disabled=false;
+    saveBtn.textContent="Salvar";
+  }
+}
+el("configPrevisaoBtn").addEventListener("click",openConfig);
+el("configCancel").addEventListener("click",closeConfig);
+el("configSave").addEventListener("click",saveConfig);
+el("configModal").addEventListener("click",e=>{if(e.target===el("configModal")) closeConfig();});
+function openArmador(visit){
+  const v=vessels.find(x=>x.visit===visit);
+  if(!v) return;
+  pendingArmadorVessel=v;
+  const atual=armadorOf(v);
+  el("armadorTitle").textContent=`Armador do ${v.navio}`;
+  el("armadorCsv").textContent=v.armador
+    ? `Pelo CSV: ${v.armador}.`
+    : "O CSV não informa o armador deste navio.";
+  el("armadorInput").value=atual.origem==="manual" ? atual.nome : "";
+  el("armadorInput").placeholder=v.armador || "Ex.: MSC";
+  const known=new Set([...ARMADORES.map(a=>a.nome), ...vessels.map(x=>armadorOf(x).nome.toUpperCase()).filter(Boolean)]);
+  el("armadorOptions").innerHTML=[...known].sort().map(n=>`<option value="${escapeHtml(n)}"></option>`).join("");
+  el("armadorRemove").classList.toggle("hidden", atual.origem!=="manual");
+  el("armadorStatus").textContent="";
+  el("armadorModal").classList.remove("hidden");
+  el("armadorInput").focus();
+}
+function closeArmador(){
+  if(armadorSaveInProgress) return;
+  pendingArmadorVessel=null;
+  el("armadorModal").classList.add("hidden");
+}
+async function saveArmador(remove=false){
+  if(armadorSaveInProgress || !pendingArmadorVessel) return;
+  const status=el("armadorStatus");
+  const nome=el("armadorInput").value.trim().toUpperCase();
+  if(!remove && !nome){
+    status.textContent="Informe o armador ou use Cancelar.";
+    status.style.color="var(--color-error)";
+    el("armadorInput").focus();
+    return;
+  }
+  if(!backend.currentUser){status.textContent="Sua sessão não está disponível. Entre novamente.";status.style.color="var(--color-error)";return;}
+  const v=pendingArmadorVessel;
+  armadorSaveInProgress=true;
+  ["armadorSave","armadorRemove","armadorCancel"].forEach(id=>el(id).disabled=true);
+  status.textContent=`Salvando no ${BACKEND_NAME}…`;
+  status.style.color="var(--color-muted)";
+  try{
+    await backend.saveArmador(navioKey(v.navio), String(v.navio), remove ? null : nome);
+    armadorSaveInProgress=false;
+    closeArmador();
+    toast(remove ? `Armador manual removido de ${v.navio}.` : `${v.navio}: armador ${nome}.`);
+  }catch(err){
+    console.error(err);
+    status.textContent=isPermissionError(err)
+      ? `Permissão negada pelo ${BACKEND_NAME}. Verifique as políticas de armadores.`
+      : (err?.message || "Não foi possível salvar o armador.");
+    status.style.color="var(--color-error)";
+  }finally{
+    armadorSaveInProgress=false;
+    ["armadorSave","armadorRemove","armadorCancel"].forEach(id=>el(id).disabled=false);
+  }
+}
+el("armadorCancel").addEventListener("click",closeArmador);
+el("armadorSave").addEventListener("click",()=>saveArmador(false));
+el("armadorRemove").addEventListener("click",()=>saveArmador(true));
+el("armadorInput").addEventListener("keydown",e=>{if(e.key==="Enter") saveArmador(false);});
+el("armadorModal").addEventListener("click",e=>{if(e.target===el("armadorModal")) closeArmador();});
+
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Escape") return;
+  if(!el("armadorModal").classList.contains("hidden")) closeArmador();
+  else if(!el("configModal").classList.contains("hidden")) closeConfig();
+  else if(!el("confirmModal").classList.contains("hidden")) el("modalCancel").click();
+});
+
+setInterval(()=>{
+  if(!backend.currentUser) return;
+  try{render();}catch(err){console.error(err);}
+  runAutoClose();
+},60000);
+
 el("tabNavios").addEventListener("click",()=>{
   el("tabNavios").classList.add("active");el("tabHistorico").classList.remove("active");
+  el("tabNavios").setAttribute("aria-selected","true");el("tabHistorico").setAttribute("aria-selected","false");
   el("viewNavios").classList.remove("hidden");el("viewHistorico").classList.add("hidden");
 });
 el("tabHistorico").addEventListener("click",()=>{
   el("tabHistorico").classList.add("active");el("tabNavios").classList.remove("active");
+  el("tabHistorico").setAttribute("aria-selected","true");el("tabNavios").setAttribute("aria-selected","false");
   el("viewHistorico").classList.remove("hidden");el("viewNavios").classList.add("hidden");
   renderHistory();
 });
@@ -998,7 +1537,7 @@ function exportHistoryToExcel(){
       "Categoria": categoryLabel(h.categoria),
       "Status": gateLabel(h.status),
       "Observação": h.notes || "",
-      "Usuário": h.usuarioEmail || ""
+      "Usuário": historyUser(h)
     }));
 
   const ws = XLSX.utils.json_to_sheet(dados);
@@ -1044,16 +1583,16 @@ el("clearHistoryBtn").addEventListener("click",async ()=>{
   if(!confirm("Tem certeza que deseja apagar todos os registros do Histórico de Gate para todos os usuários? Esta ação não poderá ser desfeita.")) return;
 
   try{
-    await set(ref(db,"historicoGate"), null);
+    await backend.clearHistory();
     toast("Histórico de Gate apagado para todos os usuários.");
   }catch(err){
     console.error(err);
-    alert("Não foi possível limpar o histórico no Firebase.");
+    alert(`Não foi possível limpar o histórico no ${BACKEND_NAME}.`);
   }
 });
 
 el("clearLocalBtn").addEventListener("click",()=>{
-  if(!confirm("Apagar somente o cache local do JSON e primeiro ETA deste navegador? Os Gates e o histórico compartilhados no Firebase não serão apagados.")) return;
+  if(!confirm("Apagar somente o cache local do JSON e primeiro ETA deste navegador? Os Gates e o histórico compartilhados não serão apagados.")) return;
   Object.values(STORAGE).forEach(k=>localStorage.removeItem(k));
   vessels=[];firstEtaMap={};
   fillServiceFilter();render();
@@ -1068,14 +1607,15 @@ const appView = el("appView");
 el("loginButton").addEventListener("click", async ()=>{
   el("loginError").textContent="";
   try{
-    await signInWithEmailAndPassword(
-      auth,
+    await backend.signIn(
       el("loginEmail").value.trim(),
       el("loginPassword").value
     );
   }catch(err){
     console.error(err);
-    el("loginError").textContent="Não foi possível realizar o login.";
+    el("loginError").textContent=backendConfigured
+      ? "Não foi possível realizar o login."
+      : "Backend não configurado: preencha SUPABASE_URL e SUPABASE_ANON_KEY no index.html.";
   }
 });
 
@@ -1083,9 +1623,9 @@ el("loginPassword").addEventListener("keydown",e=>{
   if(e.key==="Enter") el("loginButton").click();
 });
 
-el("logoutBtn").addEventListener("click",()=>signOut(auth));
+el("logoutBtn").addEventListener("click",()=>backend.signOut());
 
-onAuthStateChanged(auth,user=>{
+backend.onAuth(user=>{
   if(user){
     loginView.classList.add("hidden");
     appView.classList.remove("hidden");
@@ -1095,11 +1635,11 @@ onAuthStateChanged(auth,user=>{
   }else{
     loginView.classList.remove("hidden");
     appView.classList.add("hidden");
-    if(unsubscribeConnection){unsubscribeConnection();unsubscribeConnection=null;}
+    stopSharedListeners();
+    armadoresMap = {};
+    gatesLoaded = false;
     gatesMap = {};
     historyEvents = [];
-    if(unsubscribeGates){unsubscribeGates();unsubscribeGates=null;}
-    if(unsubscribeHistory){unsubscribeHistory();unsubscribeHistory=null;}
   }
 });
 
@@ -1111,9 +1651,9 @@ function initializeAppView(){
 
   const meta=readJSON(STORAGE.lastJsonMeta,{});
   if(meta.atualizadoEm){
-    el("jsonSourceInfo").textContent=`Última versão em cache: ${formatIsoDateTime(meta.atualizadoEm)}. Atualizando...`;
+    el("jsonSourceInfo").textContent=`Última versão em cache: ${formatIsoDateTime(meta.atualizadoEm)}. Atualizando…`;
   }else{
-    el("jsonSourceInfo").textContent="Carregando dados...";
+    el("jsonSourceInfo").textContent="Carregando dados…";
   }
 
   loadJsonData(false).catch(err=>console.error(err));
