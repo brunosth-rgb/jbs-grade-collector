@@ -2,8 +2,6 @@ const { chromium } = require('playwright');
 const dotenv = require('dotenv');
 const fs = require('fs');
 const path = require('path');
-const { initializeApp, cert, deleteApp } = require('firebase-admin/app');
-const { getDatabase } = require('firebase-admin/database');
 
 dotenv.config({ quiet: true });
 
@@ -12,7 +10,8 @@ const GRADE_URL = BASE_URL + '/grade-agendamento';
 
 const USER = process.env.PORTAL_USER;
 const PASSWORD = process.env.PORTAL_PASSWORD;
-const DATABASE_URL = process.env.FIREBASE_DATABASE_URL;
+const SUPABASE_URL = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const HEADLESS =
   String(process.env.HEADLESS ?? 'false').toLowerCase() === 'true';
@@ -25,17 +24,8 @@ const AUTH_DIR =
 const OUTPUT_DIR =
   path.join(ROOT_DIR, 'output');
 
-const CREDENTIALS_DIR =
-  path.join(ROOT_DIR, 'credentials');
-
 const AUTH_FILE =
   path.join(AUTH_DIR, 'portal.json');
-
-const SERVICE_ACCOUNT_FILE =
-  path.join(
-    CREDENTIALS_DIR,
-    'firebase-service-account.json'
-  );
 
 fs.mkdirSync(AUTH_DIR, {
   recursive: true
@@ -52,34 +42,12 @@ if (!USER || !PASSWORD) {
   process.exit(1);
 }
 
-if (!DATABASE_URL) {
+if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error(
-    'ERRO: FIREBASE_DATABASE_URL não definido no .env'
+    'ERRO: SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY não definidos no .env'
   );
   process.exit(1);
 }
-
-if (!fs.existsSync(SERVICE_ACCOUNT_FILE)) {
-  console.error(
-    'ERRO: arquivo credentials/firebase-service-account.json não encontrado'
-  );
-  process.exit(1);
-}
-
-
-/* =========================================================
-   FIREBASE
-   ========================================================= */
-
-const serviceAccount =
-  require(SERVICE_ACCOUNT_FILE);
-
-const firebaseApp = initializeApp({
-  credential: cert(serviceAccount),
-  databaseURL: DATABASE_URL
-});
-
-const db = getDatabase(firebaseApp);
 
 
 /* =========================================================
@@ -957,16 +925,52 @@ function estruturarGrade(
 
 
 /* =========================================================
-   FIREBASE
+   SUPABASE
    ========================================================= */
 
-async function publicarFirebase(
+// Grava pela API REST do Supabase (sem dependência extra).
+// "merge-duplicates" faz o upsert: substitui a linha quando a chave já existe.
+async function gravarSupabase(
+  tabela,
+  linha,
+  chaveConflito
+) {
+
+  const headers = {
+    apikey: SUPABASE_KEY,
+    'Content-Type': 'application/json',
+    Prefer: 'resolution=merge-duplicates,return=minimal'
+  };
+
+  // As chaves novas (sb_secret_...) vão só no apikey; as antigas (JWT) também no Authorization.
+  if (!SUPABASE_KEY.startsWith('sb_')) {
+    headers.Authorization = `Bearer ${SUPABASE_KEY}`;
+  }
+
+  const resposta =
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/${tabela}?on_conflict=${chaveConflito}`,
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(linha)
+      }
+    );
+
+  if (!resposta.ok) {
+    throw new Error(
+      `Supabase recusou a gravação em ${tabela}: HTTP ${resposta.status} ${await resposta.text()}`
+    );
+  }
+}
+
+async function publicarSupabase(
   resultado
 ) {
 
   console.log('');
   console.log(
-    'Publicando no Firebase...'
+    'Publicando no Supabase...'
   );
 
   const {
@@ -975,25 +979,30 @@ async function publicarFirebase(
   } =
     dataHoraBrasil();
 
-  await db
-    .ref(
-      'gradeAtual'
-    )
-    .set(
-      resultado
-    );
-
-  console.log(
-    'gradeAtual atualizado.'
+  await gravarSupabase(
+    'grade_atual',
+    {
+      id: 1,
+      coletado_em: resultado.coletadoEm,
+      dados: resultado
+    },
+    'id'
   );
 
-  await db
-    .ref(
-      `historicoGrade/${data}/${hora}`
-    )
-    .set(
-      resultado
-    );
+  console.log(
+    'grade_atual atualizada.'
+  );
+
+  await gravarSupabase(
+    'historico_grade',
+    {
+      data_coleta: data,
+      hora_chave: hora,
+      coletado_em: resultado.coletadoEm,
+      dados: resultado
+    },
+    'data_coleta,hora_chave'
+  );
 
   console.log(
     `Histórico salvo em ${data}/${hora}.`
@@ -1175,7 +1184,7 @@ async function main() {
       'JSON local criado.'
     );
 
-    await publicarFirebase(
+    await publicarSupabase(
       resultado
     );
 
@@ -1214,10 +1223,6 @@ async function main() {
       await browser
         .close();
     }
-
-    try {
-      await deleteApp(firebaseApp);
-    } catch (_) {}
   }
 }
 
